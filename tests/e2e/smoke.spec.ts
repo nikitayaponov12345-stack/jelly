@@ -30,17 +30,22 @@ test('игра запускается и рисует сцену', async ({ page
   // Сборка `npm run check` идёт без метки публикации.
   expect(await page.evaluate(() => window.__game!.build)).toBe('dev');
   // Язык страницы берётся из браузера: ru — «Желейный легион», иначе «Jelly Legion».
-  await expect(page.getByTestId('debug-line')).toContainText(/(Желейный легион|Jelly Legion) 0\.0\.7/);
+  await expect(page.getByTestId('debug-line')).toContainText(/(Желейный легион|Jelly Legion) 0\.0\.8/);
 
-  await page.screenshot({ path: `build/shots/m0-03_${info.project.name}.png` });
+  // По умолчанию — мир 1: 15 уровней, первый — «Прыжок».
+  expect(await page.evaluate(() => window.__game!.levels().length)).toBe(15);
+  expect(await page.evaluate(() => window.__game!.state().level)).toBe('w1-01');
+  await expect(page.getByTestId('hud-level')).toContainText(/(Уровень|Level) 1 · (Прыжок|Jump)/);
+
+  await page.screenshot({ path: `build/shots/m1-02_${info.project.name}.png` });
   expect(errors).toEqual([]);
 });
 
-// Ядро в собранной игре: первая желейка ждёт нажатия; «Плита» проходится без прыжков с одной гибелью.
+// Ядро в собранной игре: первая желейка ждёт нажатия; «Плита» прототипа (`?set=proto`) проходится без прыжков с одной гибелью.
 test('ядро уровня: старт по нажатию и «Плита» без прыжков', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto('/');
+  await page.goto('/?set=proto');
   await page.waitForFunction(() => window.__game?.ready === true, null, { timeout: 20_000 });
 
   expect(await page.evaluate(() => window.__game!.levels())).toEqual(['p-01', 'p-02', 'p-03', 'p-04', 'p-05', 'p-06']);

@@ -2,7 +2,7 @@
 // Для каждого уровня — пар бота с запасом (у каждого нажатия окно не меньше 0,1 с с тем же исходом жизни, короткий
 // тап — любой длины до 0,1 с), строгий пар (без запаса), время решения, запас нажатий и объём перебора; решения бота
 // с запасом пишутся в data/solutions/<набор>.json (их проверяет tests/unit/solutions.test.ts). Код выхода 1 —
-// пар в файле уровня не равен найденному, уровень не решён или строгий пар больше пара с запасом (ошибка бота).
+// пар в файле уровня не равен найденному или уровень не решён.
 // Собирается Vite (tools/solve.config.ts): ядро — TypeScript, таблицы и уровни подключаются через ?raw.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -17,6 +17,8 @@ const P = physicsFrom(DATA);
 const strictOpt = solverOptions(P);
 const opt = robustOptions(P, DATA.num('par_window_s'), DATA.num('par_tap_s'));
 const levels = allLevels(DATA);
+/** Наборы, где решение короче 15 с — норма: прототип и учебный мир 1 (GDD «Уровни и миры», «Как строим уровни»). */
+const SHORT_OK = new Set(['proto', 'w1']);
 
 console.log(
   `solve: уровней ${levels.length}; бот с запасом — нажатие раз в ${opt.pressEvery} шагов, окно от ${opt.window} шагов, ` +
@@ -32,22 +34,24 @@ const sets = new Map<string, string[]>();
 for (const def of levels) {
   const t0 = performance.now();
   const s = solveRobust(def, P, opt);
-  const strict = solve(def, P, strictOpt);
+  // Решение с запасом — тоже решение строгого бота (нажатия на его сетке, те же удержания и пределы), поэтому
+  // строгий пар не больше; строгий бот ищет только решение с меньшим числом гибелей (M1-02: так в разы быстрее).
+  const fewer = s.found && s.par > 0 ? solve(def, P, { ...strictOpt, maxDeaths: s.par - 1 }) : null;
+  const strictPar = !s.found ? -1 : fewer?.found ? fewer.par : s.par;
   const ms = Math.round(performance.now() - t0);
   const windows = s.found ? lifeWindows(def, P, s.taps) : [];
   const minWindow = windows.length > 0 ? Math.min(...windows) : null;
   const notes: string[] = [];
   if (!s.found) notes.push(`не решён с запасом за ${opt.maxDeaths} гибелей`);
   else if (s.par !== def.par) notes.push(`пар в файле ${def.par}, у бота ${s.par}: поправь par в data/levels/${def.file}.txt`);
-  if (s.found && strict.found && strict.par > s.par) notes.push('строгий пар больше пара с запасом — ошибка бота');
-  if (s.found && def.file !== 'proto' && s.steps / 60 < 15) notes.push('решение короче 15 с');
-  if (!s.found || s.par !== def.par || (strict.found && strict.par > s.par)) failed++;
+  if (s.found && !SHORT_OK.has(def.file) && s.steps / 60 < 15) notes.push('решение короче 15 с');
+  if (!s.found || s.par !== def.par) failed++;
   console.log(
     row([
       def.id,
       String(def.par),
       s.found ? String(s.par) : '—',
-      strict.found ? String(strict.par) : '—',
+      strictPar >= 0 ? String(strictPar) : '—',
       s.found ? `${(s.steps / 60).toFixed(1)} с` : '—',
       minWindow === null ? '—' : String(minWindow),
       `${s.states} / ${s.nodes}`,
@@ -56,8 +60,8 @@ for (const def of levels) {
     ]),
   );
   const entry = s.found
-    ? { map: mapHash(def), par: s.par, strict: strict.par, steps: s.steps, windows, taps: s.taps.map((t) => [t.at, t.hold]) }
-    : { map: mapHash(def), par: -1, strict: strict.par };
+    ? { map: mapHash(def), par: s.par, strict: strictPar, steps: s.steps, windows, taps: s.taps.map((t) => [t.at, t.hold]) }
+    : { map: mapHash(def), par: -1, strict: -1 };
   const lines = sets.get(def.file) ?? [];
   lines.push(`    ${JSON.stringify(def.id)}: ${JSON.stringify(entry)}`);
   sets.set(def.file, lines);

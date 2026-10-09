@@ -1,2 +1,3 @@
 id,order,file,name_key
 proto,0,proto,world.proto.name
+w1,1,w1,world.w1.name

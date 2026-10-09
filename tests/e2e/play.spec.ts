@@ -3,13 +3,14 @@ import { expect, test, type Page } from '@playwright/test';
 // Ввод одной кнопкой, строка счёта и окна в собранной игре — настоящими нажатиями (клавиатура на ПК, касания на телефоне).
 // Паузы интерфейса (надпись уровня, пауза окна) идут во времени кадров: в медленном headless-браузере — дольше, отсюда тайм-ауты.
 
+/** Игра с уровнями прототипа (`?set=proto`): сценарии ниже написаны на них. */
 async function open(page: Page): Promise<string[]> {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
   });
-  await page.goto('/');
+  await page.goto('/?set=proto');
   await page.waitForFunction(() => window.__game?.ready === true, null, { timeout: 20_000 });
   return errors;
 }

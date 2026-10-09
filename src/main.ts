@@ -1,6 +1,6 @@
 import './debug';
 import { FixedStep, STEP_MS } from './core/clock';
-import { allLevels } from './core/levels';
+import { allLevels, type LevelDef } from './core/levels';
 import { physicsFrom } from './core/physics';
 import { Run } from './core/run';
 import { DATA } from './data';
@@ -17,9 +17,20 @@ import { Hud } from './ui/hud';
 import { RestartButton } from './ui/restart-button';
 import { Windows } from './ui/windows';
 
-const VERSION = '0.0.7';
+const VERSION = '0.0.8';
 /** Метка сборки: короткий хеш коммита от `npm run publish`, иначе 'dev'. */
 const BUILD = import.meta.env.VITE_BUILD ?? 'dev';
+
+/**
+ * Уровни игры — один мир из data/worlds.csv: по умолчанию мир 1 (M1-02), `?set=<id мира>` — другой
+ * (`?set=proto` — уровни прототипа для сценариев Playwright и отладки).
+ */
+function levelSet(): LevelDef[] {
+  const id = new URLSearchParams(window.location.search).get('set') ?? 'w1';
+  const world = DATA.worlds.find((w) => w.id === id);
+  if (!world) throw new Error(`нет мира ${id} в data/worlds.csv`);
+  return allLevels(DATA).filter((l) => l.file === world.file);
+}
 
 async function boot(): Promise<void> {
   const platform = new StubPlatform();
@@ -31,7 +42,7 @@ async function boot(): Promise<void> {
   const stage = new Stage();
   await stage.init(document.getElementById('game')!);
 
-  const levels = allLevels(DATA);
+  const levels = levelSet();
   const P = physicsFrom(DATA);
   const flow = new PackFlow(levels.length, DATA.num('done_input_delay_s'));
   let run = new Run(levels[0]!, P);

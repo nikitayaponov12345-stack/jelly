@@ -31,3 +31,34 @@ level.p-05.name,Пилы,Saws
 level.p-05.hint,Пилы не ждут. Заполняй,Saws don't wait. Fill it up
 level.p-06.name,Всё вместе,All Together
 level.p-06.hint,"Яма, лазер, плита, пила, стена","Pit, laser, plate, saw, wall"
+world.w1.name,Карамельный цех,Caramel Workshop
+level.w1-01.name,Прыжок,Jump
+level.w1-01.hint,Тап — и яма позади,Tap — and the pit is behind you
+level.w1-02.name,Повыше,Higher
+level.w1-02.hint,Держи кнопку — прыгнешь выше,Hold the button to jump higher
+level.w1-03.name,Мост,Bridge
+level.w1-03.hint,Упади на шипы — станешь мостом,Fall on the spikes and become a bridge
+level.w1-04.name,Без дна,Bottomless
+level.w1-04.hint,"Яму без дна перепрыгни, шипы — засыпь","Jump the bottomless pit, fill the spikes"
+level.w1-05.name,Плита,Plate
+level.w1-05.hint,Тело на плите держит дверь,A body on the plate holds the door open
+level.w1-06.name,Плита за мостом,Plate Past the Bridge
+level.w1-06.hint,"Сначала мост, потом плита","Bridge first, then the plate"
+level.w1-07.name,Пила,Saw
+level.w1-07.hint,"Через пилу — прыжком, под пилой — тапом","Jump over a saw, tap to pass under one"
+level.w1-08.name,Ступенька,Step
+level.w1-08.hint,Упрись в стену — станешь ступенькой,Stuck at a wall? Become a step
+level.w1-09.name,Пила за мостом,Saw Past the Bridge
+level.w1-09.hint,За мостом не спеши,Don't rush past the bridge
+level.w1-10.name,Плита на столбе,Plate on a Pillar
+level.w1-10.hint,Плита наверху — запрыгни к ней,The plate is up top — jump to it
+level.w1-11.name,Два цвета,Two Colors
+level.w1-11.hint,Цвет плиты — цвет её двери,A plate's color is its door's color
+level.w1-12.name,Ступенька и плита,Step and Plate
+level.w1-12.hint,"Ступенька, а за ней плита","A step, then a plate"
+level.w1-13.name,Глубокая яма,Deep Pit
+level.w1-13.hint,Тело на дне — ступенька наверх,A body at the bottom is a step up
+level.w1-14.name,Три цвета,Three Colors
+level.w1-14.hint,Каждой двери — своя плита,Every door has its own plate
+level.w1-15.name,Карамельный цех,Caramel Workshop
+level.w1-15.hint,"Всё, чему научился",Everything you've learned

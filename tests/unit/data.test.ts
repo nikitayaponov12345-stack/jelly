@@ -30,10 +30,13 @@ describe('таблицы', () => {
     expect(() => DATA.format('ui.used', 'ru', { n: 2 })).toThrow('{par}');
   });
 
-  it('мир прототипа и его файл уровней', () => {
-    expect(DATA.worlds.map((w) => w.id)).toEqual(['proto']);
-    expect(DATA.worlds[0]?.file).toBe('proto');
+  it('миры: прототип и мир 1, у каждого свой файл уровней', () => {
+    expect(DATA.worlds.map((w) => [w.id, w.file])).toEqual([
+      ['proto', 'proto'],
+      ['w1', 'w1'],
+    ]);
     expect(DATA.levelFiles.proto).toContain('level p-01');
+    expect(DATA.levelFiles.w1).toContain('level w1-01');
   });
 
   it('места рекламы из GDD: межстраничная не чаще раза в 180 с и не раньше 3-го уровня', () => {

@@ -9,7 +9,7 @@ const text = (map: readonly string[], head = 'par 1'): string => `level t-1\n${h
 
 describe('разбор уровней', () => {
   it('шесть уровней прототипа', () => {
-    const levels = allLevels(DATA);
+    const levels = allLevels(DATA).filter((l) => l.file === 'proto');
     expect(levels.map((l) => l.id)).toEqual(['p-01', 'p-02', 'p-03', 'p-04', 'p-05', 'p-06']);
     expect(levels.map((l) => l.par)).toEqual([1, 1, 0, 2, 1, 2]);
     for (const l of levels) {
@@ -20,6 +20,17 @@ describe('разбор уровней', () => {
     }
     // Строка карты, которая начинается с #, — ряд, а не комментарий.
     expect(levels[0]!.map[12]).toBe('#######^^^^^^^^#########');
+  });
+
+  it('мир 1 — 15 уровней Карамельного цеха, пар 0–3', () => {
+    const levels = allLevels(DATA).filter((l) => l.file === 'w1');
+    expect(levels.map((l) => l.id)).toEqual(Array.from({ length: 15 }, (_, i) => `w1-${String(i + 1).padStart(2, '0')}`));
+    expect(levels.map((l) => l.par)).toEqual([0, 0, 1, 1, 1, 2, 0, 1, 1, 1, 2, 2, 1, 3, 3]);
+    expect(DATA.worlds.map((w) => w.id)).toEqual(['proto', 'w1']);
+    for (const l of levels) {
+      expect(l.limit).toBeNull();
+      expect(DATA.text(`level.${l.id}.name`, 'ru')).not.toBe('');
+    }
   });
 
   it('ошибки называют файл и причину', () => {
@@ -37,7 +48,7 @@ describe('разбор уровней', () => {
   });
 
   it('повтор id уровня', () => {
-    const t = loadTables({ ...RAW, levels: { proto: RAW.levels.proto + '\n' + RAW.levels.proto } });
+    const t = loadTables({ ...RAW, levels: { ...RAW.levels, proto: RAW.levels.proto + '\n' + RAW.levels.proto } });
     expect(() => allLevels(t)).toThrow('повтор id уровня p-01');
   });
 });
