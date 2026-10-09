@@ -1,11 +1,12 @@
 import { Container } from 'pixi.js';
+import { PLATE_CHARS } from '../core/grid';
 import type { Run } from '../core/run';
 import { drawBlob } from './blob';
 import type { HeroLook } from './hero-anim';
-import { PAL } from './palette';
+import { PAIR_COLORS, PAL } from './palette';
 import { Pen } from './pen';
 
-const solidTile = (t: string): boolean => t === '#' || t === 'P';
+const solidTile = (t: string): boolean => t === '#' || PLATE_CHARS.includes(t);
 
 /**
  * Уровень в клетках: контейнер `root` масштабируется на сторону клетки, всё рисуется в единицах клетки
@@ -65,10 +66,11 @@ export class LevelView {
         c = c2;
       }
     }
-    for (const p of g.plates) b.rect(p.c + 0.08, p.r, 0.84, 0.34).fill(PAL.plateDark);
+    for (const p of g.plates) b.rect(p.c + 0.08, p.r, 0.84, 0.34).fill(PAIR_COLORS[p.pair]!.plateDark);
     for (const d of g.doors) {
-      b.rect(d.c + 0.08, d.r, 0.1, 1).fill(PAL.doorDark);
-      b.rect(d.c + 0.82, d.r, 0.1, 1).fill(PAL.doorDark);
+      const dark = PAIR_COLORS[d.pair]!.doorDark;
+      b.rect(d.c + 0.08, d.r, 0.1, 1).fill(dark);
+      b.rect(d.c + 0.82, d.r, 0.1, 1).fill(dark);
     }
     // Пилы — отдельные фигуры: в sync они только вращаются.
     for (const old of this.sawLayer.removeChildren()) old.destroy();
@@ -94,10 +96,10 @@ export class LevelView {
   }
 
   /**
-   * Меняющаяся часть: t — время для покачивания флага и облаков (с), doorAnim — открытость двери 0…1,
+   * Меняющаяся часть: t — время для покачивания флага и облаков (с), doorAnim — открытость дверей каждой пары 0…1,
    * bodyAge(i) — сколько секунд назад застыло тело i (для «вспышки» формы), look — вид желейки.
    */
-  sync(run: Run, t: number, doorAnim: number, bodyAge: (i: number) => number, look: HeroLook | null): void {
+  sync(run: Run, t: number, doorAnim: readonly number[], bodyAge: (i: number) => number, look: HeroLook | null): void {
     const g = run.grid;
     if (this.withDecor) this.drawDecor(g.cols, t);
     // Тела застывают по одному, поэтому «вспыхивает» только последнее.
@@ -111,14 +113,14 @@ export class LevelView {
     const d = this.dyn.clear();
     g.plates.forEach((p, i) => {
       const pressed = run.platePressed(i);
-      d.roundRect(p.c + 0.05, p.r - 0.04, 0.9, pressed ? 0.18 : 0.3, 0.06).fill(pressed ? PAL.platePressed : PAL.plate);
+      const col = PAIR_COLORS[p.pair]!;
+      d.roundRect(p.c + 0.05, p.r - 0.04, 0.9, pressed ? 0.18 : 0.3, 0.06).fill(pressed ? col.platePressed : col.plate);
     });
-    const hgt = 1 - doorAnim;
-    if (hgt > 0.02) {
-      for (const dr of g.doors) {
-        d.roundRect(dr.c + 0.14, dr.r, 0.72, hgt, 0.05).fill(PAL.door);
-        d.rect(dr.c + 0.2, dr.r + 0.08 * hgt, 0.12, hgt * 0.85).fill({ color: 0xffffff, alpha: 0.35 });
-      }
+    for (const dr of g.doors) {
+      const hgt = 1 - (doorAnim[dr.pair] ?? 0);
+      if (hgt <= 0.02) continue;
+      d.roundRect(dr.c + 0.14, dr.r, 0.72, hgt, 0.05).fill(PAIR_COLORS[dr.pair]!.door);
+      d.rect(dr.c + 0.2, dr.r + 0.08 * hgt, 0.12, hgt * 0.85).fill({ color: 0xffffff, alpha: 0.35 });
     }
     g.lasers.forEach((l, i) => {
       const on = run.laserOn(i);

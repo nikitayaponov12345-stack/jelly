@@ -62,7 +62,7 @@ describe('ядро против прототипа', () => {
             break;
           }
           const a = `${G.hero.x.toFixed(9)} ${G.hero.y.toFixed(9)} ${G.legion} ${G.frozen.map((b: { c: number; r: number }) => `${b.c},${b.r}`).join(';')} ${G.doorOpen} ${G.state === 'done'}`;
-          const b = `${run.hero.x.toFixed(9)} ${run.hero.y.toFixed(9)} ${run.legion} ${run.bodies.map((x) => `${x.c},${x.r}`).join(';')} ${run.doorOpen} ${run.state === 'done'}`;
+          const b = `${run.hero.x.toFixed(9)} ${run.hero.y.toFixed(9)} ${run.legion} ${run.bodies.map((x) => `${x.c},${x.r}`).join(';')} ${run.doorOpen[0]} ${run.state === 'done'}`;
           if (a !== b) {
             mismatches.push(`L${li + 1} seed ${seed} step ${f}: прототип «${a}», ядро «${b}»`);
             break;

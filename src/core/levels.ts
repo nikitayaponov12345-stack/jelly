@@ -14,7 +14,7 @@ export interface LevelDef {
 }
 
 /** Знаки карты (data/README.md). */
-export const TILE_CHARS = '#.@F^SLlPD';
+export const TILE_CHARS = '#.@F^SLlPDQERG';
 
 /**
  * Разбор файла уровней по тем же правилам, что tools/data-check.mjs. Комментарии `#` — только вне карты:

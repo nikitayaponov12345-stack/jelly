@@ -77,7 +77,7 @@ function branchKey(b: Branch, f: number): string {
     Math.round(h.maxX * 1e4),
     b.run.ctl.held ? 1 : 0,
     left,
-    b.run.doorOpen ? 1 : 0,
+    (b.run.doorOpen[0] ? 1 : 0) | (b.run.doorOpen[1] ? 2 : 0) | (b.run.doorOpen[2] ? 4 : 0),
   ].join(' ');
 }
 

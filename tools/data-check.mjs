@@ -158,7 +158,10 @@ for (const r of worlds) {
 for (const f of levelFiles) if (!worlds.some((w) => w.file === f)) err(`data/levels/${f}.txt: файла нет в data/worlds.csv`);
 
 // --- уровни ---
-const TILES = new Set(['#', '.', '@', 'F', '^', 'S', 'L', 'l', 'P', 'D']);
+const TILES = new Set(['#', '.', '@', 'F', '^', 'S', 'L', 'l', 'P', 'D', 'Q', 'E', 'R', 'G']);
+// Пары плит и дверей (M1-01): плита PLATES[k] открывает двери DOORS[k].
+const PLATES = ['P', 'Q', 'R'];
+const DOORS = ['D', 'E', 'G'];
 const levelIds = new Set();
 let levelCount = 0;
 function checkLevel(file, lv) {
@@ -186,10 +189,13 @@ function checkLevel(file, lv) {
   if (sr >= 0) {
     const sc = lv.map[sr].indexOf('@');
     const below = sr + 1 < ROWS ? lv.map[sr + 1][sc] : undefined;
-    if (below !== '#' && below !== 'P') err(`${at}: под стартом ${lv.id} нет земли или плиты`);
+    if (below !== '#' && !PLATES.includes(below)) err(`${at}: под стартом ${lv.id} нет земли или плиты`);
   }
-  if ((count.D ?? 0) > 0 && !(count.P > 0)) err(`${at}: в ${lv.id} есть дверь D, но нет плиты P`);
-  if ((count.P ?? 0) > 0 && !(count.D > 0)) err(`${at}: в ${lv.id} есть плита P, но нет двери D`);
+  PLATES.forEach((p, k) => {
+    const d = DOORS[k];
+    if ((count[d] ?? 0) > 0 && !(count[p] > 0)) err(`${at}: в ${lv.id} есть дверь ${d}, но нет плиты ${p}`);
+    if ((count[p] ?? 0) > 0 && !(count[d] > 0)) err(`${at}: в ${lv.id} есть плита ${p}, но нет двери ${d}`);
+  });
   needText(`level.${lv.id}.name`, at);
   needText(`level.${lv.id}.hint`, at);
 }

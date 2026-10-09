@@ -34,7 +34,7 @@ export class Scene {
   private readonly anim = new HeroAnim();
   private readonly fx = new Fx();
   private bodyBorn: number[] = [];
-  private doorOpenAnim = 0;
+  private doorOpenAnim: number[] = [];
   private time = 0;
   private frame = 0;
   private layout: Layout = 'landscape';
@@ -76,7 +76,7 @@ export class Scene {
     this.main.build(run);
     this.mini.build(run);
     this.bodyBorn = run.bodies.map(() => this.time - 1);
-    this.doorOpenAnim = run.doorOpen ? 1 : 0;
+    this.doorOpenAnim = run.doorOpen.map((open) => (open ? 1 : 0));
     this.fx.clear();
     this.camera.snap(this.cameraTarget());
   }
@@ -129,10 +129,13 @@ export class Scene {
     return this.fx.count;
   }
 
-  /** Открытость двери для рисунка 0…1: догоняет состояние попытки. */
-  private doorAnim(dt: number): number {
-    const target = this.run.doorOpen ? 1 : 0;
-    this.doorOpenAnim += (target - this.doorOpenAnim) * Math.min(1, dt * 12);
+  /** Открытость дверей каждой пары для рисунка 0…1: догоняет состояние попытки. */
+  private doorAnim(dt: number): number[] {
+    const k = Math.min(1, dt * 12);
+    this.doorOpenAnim = this.run.doorOpen.map((open, i) => {
+      const a = this.doorOpenAnim[i] ?? 0;
+      return a + ((open ? 1 : 0) - a) * k;
+    });
     return this.doorOpenAnim;
   }
 

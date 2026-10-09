@@ -12,7 +12,8 @@ export interface DebugState {
   stars: number;
   hero: { x: number; y: number; vx: number; vy: number; alive: boolean; grounded: boolean };
   bodies: Array<{ c: number; r: number }>;
-  doorOpen: boolean;
+  /** Открыты ли двери пары 0, 1, 2 (P и D, Q и E, R и G). */
+  doorOpen: boolean[];
   lasers: Array<{ on: boolean; warn: boolean; end: number }>;
 }
 

@@ -17,7 +17,7 @@ import { Hud } from './ui/hud';
 import { RestartButton } from './ui/restart-button';
 import { Windows } from './ui/windows';
 
-const VERSION = '0.0.6';
+const VERSION = '0.0.7';
 /** Метка сборки: короткий хеш коммита от `npm run publish`, иначе 'dev'. */
 const BUILD = import.meta.env.VITE_BUILD ?? 'dev';
 
@@ -143,7 +143,7 @@ async function boot(): Promise<void> {
     stars: run.stars,
     hero: { x: run.hero.x, y: run.hero.y, vx: run.hero.vx, vy: run.hero.vy, alive: run.hero.alive, grounded: run.hero.grounded },
     bodies: run.bodies.map(({ c, r }) => ({ c, r })),
-    doorOpen: run.doorOpen,
+    doorOpen: run.doorOpen.slice(),
     lasers: run.grid.lasers.map((_, i) => ({ on: run.laserOn(i), warn: run.laserWarn(i), end: run.beamEnds[i] ?? run.grid.rows })),
   });
 

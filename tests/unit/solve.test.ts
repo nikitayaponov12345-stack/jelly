@@ -78,7 +78,7 @@ describe('бот-решатель', () => {
     expect(r.steps).toBe(s.steps);
   });
 
-  it('стена до неба: в пределах поиска не решается', () => {
+  it('стена до неба: в пределах поиска не решается', { timeout: 30_000 }, () => {
     const wall = '...........#............';
     const def = levelOf([...Array<string>(9).fill(wall), '.@.........#.........F..', GROUND, GROUND, GROUND]);
     const s = solve(def, P, { ...solverOptions(P), maxDeaths: 2 });

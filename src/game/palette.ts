@@ -36,3 +36,13 @@ export const PAL = {
 } as const;
 
 export const CONFETTI = [0xff6fae, 0x7c5cff, 0x58d68d, 0xffd166, 0xff9f43, 0x6fd3ff] as const;
+
+/**
+ * Цвета пар плит и дверей (M1-01): пара 0 (P и D) — цвета прототипа, 1 (Q и E) — голубая, 2 (R и G) — фиолетовая
+ * (не зелёная: зелёная плита сливалась с травой и флагом).
+ */
+export const PAIR_COLORS = [
+  { door: PAL.door, doorDark: PAL.doorDark, plate: PAL.plate, plateDark: PAL.plateDark, platePressed: PAL.platePressed },
+  { door: 0x5aa9ff, doorDark: 0x2f7fd6, plate: 0x8cc8ff, plateDark: 0x4a8fd1, platePressed: 0xc2e2ff },
+  { door: 0xa66bff, doorDark: 0x7a45d6, plate: 0xc9a6ff, plateDark: 0x8f63db, platePressed: 0xe2d1ff },
+] as const;

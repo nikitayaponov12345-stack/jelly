@@ -12,11 +12,11 @@ describe('сетка уровня', () => {
     expect(g.start).toEqual({ c: 1, r: 9 });
     expect(g.flag).toEqual({ c: 21, r: 9 });
     expect(g.lasers).toEqual([{ c: 12, r: 9, phase: 0 }]);
-    expect(g.plates).toEqual([{ c: 12, r: 11 }]);
+    expect(g.plates).toEqual([{ c: 12, r: 11, pair: 0 }]);
     expect(g.doors).toEqual([
-      { c: 13, r: 7 },
-      { c: 13, r: 8 },
-      { c: 13, r: 9 },
+      { c: 13, r: 7, pair: 0 },
+      { c: 13, r: 8, pair: 0 },
+      { c: 13, r: 9, pair: 0 },
     ]);
     expect(g.saws).toEqual([]);
     expect(g.tile(12, 9)).toBe('.');

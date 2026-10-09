@@ -3,7 +3,7 @@ import { beamEnd, checkHazards, laserOn as isLaserOn, laserWarn as isLaserWarn, 
 import { freezeAnchor, placeBody } from './freeze';
 import { moveHero, newHero, type Control, type Hero } from './hero';
 import type { LevelDef } from './levels';
-import { doorsOpen, platePressed } from './mechanisms';
+import { PAIRS, doorsOpen, platePressed } from './mechanisms';
 import type { Physics } from './physics';
 import { starsFor } from './stars';
 
@@ -32,7 +32,8 @@ export class Run {
   legion = 0;
   /** Время уровня, с: идёт только в play. */
   time = 0;
-  doorOpen = false;
+  /** Открыты ли двери пары 0, 1, 2 (P и D, Q и E, R и G). */
+  doorOpen: readonly boolean[] = new Array<boolean>(PAIRS).fill(false);
   respawnT = 0;
   stars: 0 | 1 | 2 | 3 = 0;
   /** Ряд обрыва луча каждого лазера (grid.lasers) на этом шаге. */
@@ -78,7 +79,7 @@ export class Run {
     this.bodyKeys.clear();
     this.legion = 0;
     this.time = 0;
-    this.doorOpen = false;
+    this.doorOpen = new Array<boolean>(PAIRS).fill(false);
     this.respawnT = 0;
     this.stars = 0;
     this.ctl.jumpBuf = 0;
@@ -100,7 +101,7 @@ export class Run {
         this.events.push({ type: 'respawn' });
       }
     }
-    this.doorOpen = doorsOpen(this.grid, this.hero, this.isBody, this.doorOpen, this.P);
+    if (this.grid.plates.length > 0 || this.grid.doors.length > 0) this.doorOpen = doorsOpen(this.grid, this.hero, this.isBody, this.doorOpen, this.P);
   }
 
   /** Твёрдая клетка: земля, плита, закрытая дверь, тело; за краями слева и справа — стена (isSolid прототипа). */
@@ -108,8 +109,11 @@ export class Run {
     if (c < 0 || c >= this.grid.cols) return true;
     if (r < 0 || r >= this.grid.rows) return false;
     const t = this.grid.tile(c, r);
-    if (t === '#' || t === 'P') return true;
-    if (t === 'D') return !this.doorOpen;
+    // Плиты P Q R — пол; двери D E G — пар 0, 1, 2 (PLATE_CHARS и DOOR_CHARS сетки); сравнение знаков — горячий путь.
+    if (t === '#' || t === 'P' || t === 'Q' || t === 'R') return true;
+    if (t === 'D') return !this.doorOpen[0];
+    if (t === 'E') return !this.doorOpen[1];
+    if (t === 'G') return !this.doorOpen[2];
     return this.isBody(c, r);
   };
 
@@ -139,7 +143,7 @@ export class Run {
     r.bodyKeys = new Set(this.bodyKeys);
     r.legion = this.legion;
     r.time = this.time;
-    r.doorOpen = this.doorOpen;
+    r.doorOpen = this.doorOpen; // массив не меняется на месте: doorsOpen отдаёт новый, когда что-то сменилось
     r.respawnT = this.respawnT;
     r.stars = this.stars;
     r.beamEnds = this.beamEnds.slice();

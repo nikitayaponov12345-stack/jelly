@@ -1,7 +1,7 @@
 {
   "name": "jelly",
   "private": true,
-  "version": "0.0.6",
+  "version": "0.0.7",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
@@ -10,7 +10,7 @@
     "dev": "vite --host",
     "data": "node tools/data-check.mjs",
     "build": "tsc --noEmit && vite build && node tools/size-report.mjs",
-    "preview": "vite preview --host --port 4173 --strictPort",
+    "preview": "vite preview --host --port 4273 --strictPort",
     "test": "vitest run",
     "e2e": "playwright test",
     "check": "npm run data && npm run test && npm run build && npm run e2e",
