@@ -43,6 +43,10 @@ export interface GameDebug {
   camera(): number;
   /** Остановить (true) или продолжить шаги ядра в тикере; кадры, камера и анимация идут, advance работает. */
   pauseCore(on: boolean): void;
+  /** Что на экране: уровень, окно итога уровня или итог набора. */
+  screen(): 'level' | 'result' | 'pack';
+  /** Открыть итог набора с теми итогами уровней, что уже есть (снимки и проверки окна). */
+  showPack(): void;
 }
 
 declare global {

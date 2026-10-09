@@ -38,10 +38,13 @@
         touch-action: manipulation;
         cursor: pointer;
       }
+      #ui [hidden] {
+        display: none !important;
+      }
+      /* Кнопка «Заново» — в строке счёта справа, в CSS-пикселях: на телефоне не меньше 48 × 48. */
       #ui .restart-btn {
         position: absolute;
-        top: 8px;
-        right: 8px;
+        z-index: 2;
         width: 48px;
         height: 48px;
         border: 0;
@@ -52,19 +55,221 @@
         line-height: 48px;
         padding: 0;
       }
-      #ui .play-msg {
+      /* Слой в точках дизайна: --u — CSS-пикселей в точке дизайна (src/ui/design-layer.ts). */
+      #ui .design-layer {
         position: absolute;
-        transform: translate(-50%, -50%);
-        padding: 8px 18px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.75);
-        color: #7c6a94;
-        font-size: 18px;
-        font-weight: 700;
+        --u: 1;
+      }
+      #ui .hud {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        box-sizing: border-box;
+        display: grid;
+        align-items: center;
+        font-weight: 800;
         white-space: nowrap;
       }
-      #ui .play-msg[hidden] {
-        display: none;
+      #ui .hud-level,
+      #ui .hud-legion {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #ui .hud-legion {
+        color: #d64f8f;
+      }
+      #ui .design-layer[data-layout='landscape'] .restart-btn {
+        right: calc(var(--u) * 16px);
+        top: max(0px, calc(var(--u) * 28px - 24px));
+      }
+      #ui .design-layer[data-layout='portrait'] .restart-btn {
+        right: calc(var(--u) * 16px);
+        top: calc(var(--u) * 60px - 24px);
+      }
+      #ui .design-layer[data-layout='landscape'] .hud {
+        height: calc(var(--u) * 56px);
+        padding: 0 calc(var(--u) * 32px + 48px) 0 calc(var(--u) * 40px);
+        grid-template-columns: 1fr auto 1fr;
+        column-gap: calc(var(--u) * 24px);
+        font-size: calc(var(--u) * 24px);
+      }
+      #ui .design-layer[data-layout='landscape'] .hud-time {
+        justify-self: end;
+      }
+      #ui .design-layer[data-layout='portrait'] .hud {
+        height: calc(var(--u) * 120px);
+        padding: calc(var(--u) * 8px) calc(var(--u) * 32px + 48px) calc(var(--u) * 8px) calc(var(--u) * 24px);
+        grid-template-columns: 1fr auto;
+        grid-template-areas: 'level time' 'legion legion';
+        column-gap: calc(var(--u) * 20px);
+        font-size: calc(var(--u) * 34px);
+      }
+      #ui .design-layer[data-layout='portrait'] .hud-level {
+        grid-area: level;
+      }
+      #ui .design-layer[data-layout='portrait'] .hud-time {
+        grid-area: time;
+      }
+      #ui .design-layer[data-layout='portrait'] .hud-legion {
+        grid-area: legion;
+      }
+      #ui .plaque,
+      #ui .tap-msg {
+        position: absolute;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-weight: 800;
+      }
+      #ui .plaque {
+        box-sizing: border-box;
+        max-width: 88%;
+        padding: calc(var(--u) * 10px) calc(var(--u) * 22px);
+        border-radius: calc(var(--u) * 16px);
+      }
+      #ui .intro {
+        background: rgba(255, 255, 255, 0.92);
+        font-size: calc(var(--u) * 30px);
+        white-space: nowrap;
+      }
+      #ui .intro-game {
+        color: #7c5cff;
+        font-size: calc(var(--u) * 44px);
+        font-weight: 900;
+      }
+      #ui .hint {
+        width: max-content;
+        background: rgba(255, 255, 255, 0.7);
+        color: #7c6a94;
+        font-size: calc(var(--u) * 22px);
+      }
+      #ui .design-layer[data-layout='landscape'] .plaque {
+        top: calc(var(--u) * 136px);
+      }
+      #ui .design-layer[data-layout='portrait'] .plaque {
+        top: calc(var(--u) * 210px);
+      }
+      #ui .design-layer[data-layout='portrait'] .intro {
+        font-size: calc(var(--u) * 38px);
+      }
+      #ui .design-layer[data-layout='portrait'] .intro-game {
+        font-size: calc(var(--u) * 52px);
+      }
+      #ui .design-layer[data-layout='portrait'] .hint {
+        font-size: calc(var(--u) * 30px);
+      }
+      #ui .tap-msg {
+        width: max-content;
+        max-width: 90%;
+        color: #7c5cff;
+        animation: tap-blink 1.6s ease-in-out infinite;
+      }
+      #ui .tap-main {
+        font-size: calc(var(--u) * 30px);
+      }
+      #ui .tap-sub {
+        margin-top: calc(var(--u) * 8px);
+        color: #7c6a94;
+        font-size: calc(var(--u) * 20px);
+      }
+      #ui .design-layer[data-layout='landscape'] .tap-msg {
+        top: calc(var(--u) * 306px);
+      }
+      #ui .design-layer[data-layout='portrait'] .tap-msg {
+        top: calc(var(--u) * 400px);
+      }
+      #ui .design-layer[data-layout='portrait'] .tap-main {
+        font-size: calc(var(--u) * 40px);
+      }
+      #ui .design-layer[data-layout='portrait'] .tap-sub {
+        font-size: calc(var(--u) * 28px);
+      }
+      @keyframes tap-blink {
+        50% {
+          opacity: 0.35;
+        }
+      }
+      #ui .window {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        box-sizing: border-box;
+        width: calc(var(--u) * 560px);
+        padding: calc(var(--u) * 28px) calc(var(--u) * 32px);
+        border: calc(var(--u) * 3px) solid #b89cff;
+        border-radius: calc(var(--u) * 28px);
+        background: #ffffff;
+        box-shadow: 0 calc(var(--u) * 10px) calc(var(--u) * 30px) rgba(59, 42, 85, 0.25);
+        text-align: center;
+        animation: win-pop 0.3s ease-out;
+      }
+      #ui .design-layer[data-layout='portrait'] .window {
+        width: calc(var(--u) * 640px);
+      }
+      @keyframes win-pop {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -44%);
+        }
+      }
+      #ui .win-title {
+        font-size: calc(var(--u) * 40px);
+        font-weight: 900;
+      }
+      #ui .win-stars {
+        margin: calc(var(--u) * 6px) 0;
+        font-size: calc(var(--u) * 64px);
+        line-height: 1.2;
+      }
+      #ui .star {
+        margin: 0 calc(var(--u) * 6px);
+        color: #d9d2e6;
+      }
+      #ui .star.on {
+        color: #ffc93c;
+      }
+      #ui .win-line {
+        margin: calc(var(--u) * 6px) 0;
+        color: #7c6a94;
+        font-size: calc(var(--u) * 26px);
+        font-weight: 700;
+      }
+      #ui .win-buttons {
+        display: flex;
+        justify-content: center;
+        gap: calc(var(--u) * 20px);
+        margin-top: calc(var(--u) * 22px);
+      }
+      #ui .win-btn {
+        min-width: calc(var(--u) * 200px);
+        min-height: max(44px, calc(var(--u) * 64px));
+        padding: 0 calc(var(--u) * 28px);
+        border: 0;
+        border-radius: calc(var(--u) * 16px);
+        color: #fff;
+        font-size: calc(var(--u) * 26px);
+        font-weight: 800;
+      }
+      #ui .win-btn.primary {
+        background: #7c5cff;
+      }
+      #ui .win-btn.secondary {
+        background: #b89cff;
+      }
+      #ui .win-btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      #ui .design-layer[data-layout='portrait'] .win-title {
+        font-size: calc(var(--u) * 48px);
+      }
+      #ui .design-layer[data-layout='portrait'] .win-line {
+        font-size: calc(var(--u) * 32px);
+      }
+      #ui .design-layer[data-layout='portrait'] .win-btn {
+        font-size: calc(var(--u) * 32px);
       }
       #ui .debug-line {
         position: absolute;
