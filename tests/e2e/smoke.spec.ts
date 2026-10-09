@@ -17,10 +17,9 @@ test('игра запускается и рисует сцену', async ({ page
   expect(box?.width ?? 0).toBeGreaterThan(100);
   expect(box?.height ?? 0).toBeGreaterThan(100);
 
+  // Ядро шагает в тикере: 0,3 с игрового времени. Без жёсткого окна в 1 с — в медленном headless-браузере кадры редкие.
   const before = await page.evaluate(() => window.__game!.gameMs());
-  await page.waitForTimeout(1000);
-  const after = await page.evaluate(() => window.__game!.gameMs());
-  expect(after).toBeGreaterThan(before + 300);
+  await page.waitForFunction((b) => window.__game!.gameMs() > b + 300, before, { timeout: 10_000 });
 
   const layout = await page.evaluate(() => window.__game!.layout());
   expect(layout).toBe(info.project.name === 'phone' ? 'portrait' : 'landscape');
@@ -31,9 +30,9 @@ test('игра запускается и рисует сцену', async ({ page
   // Сборка `npm run check` идёт без метки публикации.
   expect(await page.evaluate(() => window.__game!.build)).toBe('dev');
   // Язык страницы берётся из браузера: ru — «Желейный легион», иначе «Jelly Legion».
-  await expect(page.getByTestId('debug-line')).toContainText(/(Желейный легион|Jelly Legion) 0\.0\.2/);
+  await expect(page.getByTestId('debug-line')).toContainText(/(Желейный легион|Jelly Legion) 0\.0\.3/);
 
-  await page.screenshot({ path: `build/shots/s0_${info.project.name}.png` });
+  await page.screenshot({ path: `build/shots/m0-02_${info.project.name}.png` });
   expect(errors).toEqual([]);
 });
 

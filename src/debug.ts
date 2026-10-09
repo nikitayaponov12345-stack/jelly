@@ -37,6 +37,12 @@ export interface GameDebug {
   command: { press(): void; release(): void; restart(): void };
   /** Прогнать ядро на ms игрового времени сразу, без кадров: round(ms / шаг) шагов. */
   advance(ms: number): void;
+  /** Точка уровня (клетки) → точка окна (CSS-пиксели) с учётом раскладки и камеры. */
+  toScreen(x: number, y: number): { x: number; y: number };
+  /** Сдвиг камеры окна поля, точки дизайна (в горизонтали всегда 0). */
+  camera(): number;
+  /** Остановить (true) или продолжить шаги ядра в тикере; кадры, камера и анимация идут, advance работает. */
+  pauseCore(on: boolean): void;
 }
 
 declare global {
