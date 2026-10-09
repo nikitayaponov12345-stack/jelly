@@ -1,0 +1,6 @@
+place,kind,reward,first_after_s,cooldown_s,after_levels,note
+skip_level,rewarded,skip,,,,После пар + skip_after_extra_deaths гибелей или skip_after_s секунд на уровне
+ghost_hint,rewarded,ghost,,,,"Там же; уровень с начала, призраки один раз показывают решение бота"
+extra_jellies,rewarded,extra_jellies,,,,"Уровень с лимитом легиона, желейки кончились (мир 4)"
+next_level,interstitial,,180,180,3,"«Дальше» в окне итога; не раньше прохождения 3-го уровня, не чаще раза в 180 с"
+next_world,interstitial,,180,180,3,"Переход между мирами, тот же предел частоты"

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>Желейный легион</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #f6f1ff;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #game {
+        position: fixed;
+        inset: 0;
+      }
+      #game canvas {
+        display: block;
+      }
+      #ui {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        font-family: system-ui, sans-serif;
+        color: #3b2a55;
+      }
+      #ui button {
+        pointer-events: auto;
+        font: inherit;
+        touch-action: manipulation;
+        cursor: pointer;
+      }
+      #ui .debug-line {
+        position: absolute;
+        left: 8px;
+        bottom: 8px;
+        max-width: calc(100% - 16px);
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: rgba(59, 42, 85, 0.72);
+        color: #fff;
+        font-size: 12px;
+        line-height: 1.3;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="ui"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

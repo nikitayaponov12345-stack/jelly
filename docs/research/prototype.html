@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Желейный легион</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin:0; height:100%; background:#0f1115; overflow:hidden; touch-action:none; -webkit-user-select:none; user-select:none; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #stage { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  canvas { display:block; background:#0f1115; touch-action:none; }
+  #hint { position:fixed; left:0; right:0; bottom:env(safe-area-inset-bottom, 0); text-align:center; color:#9aa3b2; font-size:12px; padding:4px; pointer-events:none; opacity:.8 }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="hint"></div>
+<script>
+/* ===================== Общий каркас прототипа =====================
+   Логическое поле: выбирается по ориентации окна.
+   PORTRAIT_W×PORTRAIT_H и LANDSCAPE_W×LANDSCAPE_H задаёт игра.
+   Канвас вписывается в окно с сохранением пропорций (letterbox).
+   Ввод: единые события pointer (мышь + тач), координаты в логических px.
+   ================================================================= */
+const Proto = (() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const S = { W: 960, H: 540, scale: 1, ox: 0, oy: 0, portrait: false, dpr: 1 };
+  let dims = { landscape: [960, 540], portrait: [540, 960] };
+
+  function fit() {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    S.portrait = vh > vw;
+    const [W, H] = S.portrait ? dims.portrait : dims.landscape;
+    S.W = W; S.H = H;
+    S.scale = Math.min(vw / W, vh / H);
+    S.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cw = Math.floor(W * S.scale), ch = Math.floor(H * S.scale);
+    canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
+    canvas.width = Math.floor(cw * S.dpr); canvas.height = Math.floor(ch * S.dpr);
+    const r = canvas.getBoundingClientRect(); S.ox = r.left; S.oy = r.top;
+    ctx.setTransform(S.scale * S.dpr, 0, 0, S.scale * S.dpr, 0, 0);
+    if (Proto.onResize) Proto.onResize(S.W, S.H, S.portrait);
+  }
+  function toLogical(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / S.scale, y: (e.clientY - r.top) / S.scale };
+  }
+  const pointers = new Map();
+  canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); const p = toLogical(e); pointers.set(e.pointerId, p); Proto.onDown && Proto.onDown(p.x, p.y, e.pointerId); e.preventDefault(); });
+  canvas.addEventListener('pointermove', e => { const p = toLogical(e); if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p); Proto.onMove && Proto.onMove(p.x, p.y, e.pointerId, pointers.has(e.pointerId)); e.preventDefault(); });
+  const up = e => { const p = toLogical(e); pointers.delete(e.pointerId); Proto.onUp && Proto.onUp(p.x, p.y, e.pointerId); e.preventDefault(); };
+  canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+  window.addEventListener('keydown', e => { if (Proto.onKey) Proto.onKey(e.key, true, e); if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault(); });
+  window.addEventListener('keyup', e => { if (Proto.onKey) Proto.onKey(e.key, false, e); });
+  window.addEventListener('resize', fit); window.addEventListener('orientationchange', () => setTimeout(fit, 50));
+
+  // детерминированный ГСЧ
+  function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+
+  // простой текст с обводкой
+  function text(str, x, y, size = 20, color = '#fff', align = 'center', weight = 700, stroke = 'rgba(0,0,0,.55)') {
+    ctx.font = `${weight} ${size}px system-ui, sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle';
+    if (stroke) { ctx.lineWidth = Math.max(2, size / 7); ctx.strokeStyle = stroke; ctx.lineJoin = 'round'; ctx.strokeText(str, x, y); }
+    ctx.fillStyle = color; ctx.fillText(str, x, y);
+  }
+  function roundRect(x, y, w, h, r, fill, strokeStyle) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (strokeStyle) { ctx.strokeStyle = strokeStyle; ctx.stroke(); }
+  }
+  // кнопка: возвращает true, если точка внутри
+  function button(label, x, y, w, h, fill = '#2f7df6', color = '#fff', size = 20) { roundRect(x, y, w, h, 12, fill); text(label, x + w / 2, y + h / 2, size, color); return { x, y, w, h, hit: (px, py) => px >= x && px <= x + w && py >= y && py <= y + h }; }
+
+  let last = performance.now(), acc = 0; const STEP = 1 / 60;
+  function loop(now) {
+    let dt = Math.min(0.1, (now - last) / 1000); last = now; acc += dt;
+    while (acc >= STEP) { Proto.update && Proto.update(STEP); acc -= STEP; }
+    ctx.save(); ctx.clearRect(0, 0, S.W, S.H); Proto.draw && Proto.draw(ctx, S.W, S.H, S.portrait); ctx.restore();
+    requestAnimationFrame(loop);
+  }
+  function start(d) { if (d) dims = d; fit(); requestAnimationFrame(loop); }
+  function hint(s) { document.getElementById('hint').textContent = s; }
+  return { S, ctx, canvas, fit, rng, text, roundRect, button, start, hint, pointers };
+})();
+window.__proto = { ready: false };
+</script>
+<script>
+/* ======= ИГРА «Желейный легион» ======= */
+(() => {
+const { text, roundRect } = Proto;
+const COLS = 24, ROWS = 13;
+// физика (в клетках и секундах)
+const RUN = 4.5, GRAV = 30, GRAV_HOLD = 18, HOLD_MAX = 0.25, JUMP_V = Math.sqrt(2 * GRAV * 2.5), VMAX = 20;
+const HW = 0.4, HH = 0.4;              // половина ширины/высоты желейки (0.8 клетки)
+const LASER_PERIOD = 3.0, LASER_ON = 1.5, LASER_WARN = 0.35;
+const STUCK_LIMIT = 2.6;               // нет продвижения 2,6 с — лопается (защита от тупиков)
+const RESPAWN = 0.4;
+const PAL = {
+  bg0: '#f6f1ff', bg1: '#e9ddff', ground: '#3b2a55', groundDark: '#2d1f42', grass: '#8ee3a0', grassDark: '#5fc47a',
+  spike: '#f1eff6', spikeEdge: '#8e8aa3', laser: 'rgba(255,80,80,0.32)', laserCore: '#ff5a5a', door: '#ff9f43', doorDark: '#d97a1f',
+  plate: '#ffd166', plateDark: '#c99a2e', flag: '#58d68d', flagDark: '#2e9e5b', hero: '#ff6fae', heroDark: '#d64f8f', frozen: '#c99bb5', frozenDark: '#9f7591',
+  ink: '#3b2a55', inkSoft: '#7c6a94', hint: 'rgba(107,79,138,0.33)', saw: '#dcd9e6', sawDark: '#6b6880', panel: 'rgba(255,255,255,0.92)', btn: '#7c5cff', btn2: '#b89cff', star: '#ffc93c', starOff: '#d9d2e6'
+};
+/* Легенда карт: # земля, . пусто, ^ шипы, S пила, L лазер (фаза 0), l лазер (фаза 1.5 с),
+   P плита (твёрдая клетка пола), D дверь, F флаг, @ старт героя */
+const LEVELS = [
+  { name: 'Яма', par: 3, hint: 'Прыгай позже… или не прыгай', map: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '.@...................F..',
+    '#######........#########',
+    '#######........#########',
+    '#######^^^^^^^^#########'] },
+  { name: 'Плита', par: 1, hint: 'Плита держит дверь. Кто-то должен остаться', map: [
+    '.............#..........',
+    '.............#..........',
+    '.............#..........',
+    '.............#..........',
+    '.............#..........',
+    '.............#..........',
+    '.............#..........',
+    '.............D..........',
+    '.............D..........',
+    '.@..........LD.......F..',
+    '############.###########',
+    '############P###########',
+    '########################'] },
+  { name: 'Лазер', par: 1, hint: 'Лазер бьёт сверху. Прыгни в него', map: [
+    '........................',
+    '........................',
+    '..........l.............',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '.@.......#...........F..',
+    '########################',
+    '########################',
+    '########################'] },
+  { name: 'Лестница', par: 2, hint: 'Стена высокая. Строй лестницу', map: [
+    '........................',
+    '.............lL.........',
+    '........................',
+    '........................',
+    '........................',
+    '.....................F..',
+    '...............#########',
+    '...............#########',
+    '...............#########',
+    '.@.............#########',
+    '########################',
+    '########################',
+    '########################'] },
+  { name: 'Пилы', par: 3, hint: 'Пилы не ждут. Заполняй', map: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '............S...........',
+    '...................S....',
+    '.@...S..S............F..',
+    '##########.....#########',
+    '##########.....#########',
+    '##########^^^^^#########'] },
+  { name: 'Всё вместе', par: 4, hint: 'Яма, лазер, плита, пила, стена', map: [
+    '...............#........',
+    '...............#........',
+    '..........L....#........',
+    '...............#........',
+    '...............#........',
+    '...............#........',
+    '...............#.....F..',
+    '...............D.....###',
+    '...............D.....###',
+    '.@.......#....LD..S..###',
+    '####....######.#########',
+    '####....######P#########',
+    '####^^^^################'] }
+];
+// текущий разобранный уровень
+let LV = null;
+function parseLevel(def) {
+  const g = def.map.map(r => r.split(''));
+  const lv = { grid: g, lasers: [], saws: [], plates: [], doors: [], start: { c: 1, r: 9 }, flag: null };
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const ch = g[r][c];
+    if (ch === 'L' || ch === 'l') { lv.lasers.push({ c, r, phase: ch === 'l' ? LASER_ON : 0, end: ROWS }); g[r][c] = '.'; }
+    else if (ch === 'S') { lv.saws.push({ c, r }); g[r][c] = '.'; }
+    else if (ch === 'P') lv.plates.push({ c, r });
+    else if (ch === 'D') lv.doors.push({ c, r });
+    else if (ch === '@') { lv.start = { c, r }; g[r][c] = '.'; }
+    else if (ch === 'F') { lv.flag = { c, r }; g[r][c] = '.'; }
+  }
+  return lv;
+}
+// ---------- состояние ----------
+const G = {
+  state: 'start',          // start | play | done | final
+  level: 0, levelTime: 0, legion: 0, frozen: [], doorOpen: false, doorAnim: 0,
+  hero: null, respawnT: 0, introT: 0, finishT: 0,
+  particles: [], confetti: [], stars: [], totalDeaths: 0, totalTime: 0, totalStars: 0,
+  held: false, jumpBuf: 0, camX: 0, shake: 0, frame: 0
+};
+const rnd = Proto.rng(20251008);
+const L = { cs: 40, mapX: 0, mapY: 20, viewW: 960, viewH: 520, portrait: false, btnRestart: null, buttons: [] };
+
+function frozenAt(c, r) { return G.frozen.some(f => f.c === c && f.r === r); }
+function tile(c, r) { if (c < 0 || c >= COLS) return '#'; if (r < 0 || r >= ROWS) return '.'; return LV.grid[r][c]; }
+function isSolid(c, r) {
+  if (c < 0 || c >= COLS) return true;
+  if (r < 0 || r >= ROWS) return false;
+  const t = LV.grid[r][c];
+  if (t === '#' || t === 'P') return true;
+  if (t === 'D') return !G.doorOpen;
+  return frozenAt(c, r);
+}
+function freeCell(c, r) { return !isSolid(c, r) && tile(c, r) !== '^' && !(LV.flag && LV.flag.c === c && LV.flag.r === r); }
+
+function newHero() {
+  const s = LV.start;
+  return { x: s.c + 0.5, y: s.r + 1 - HH, vx: RUN, vy: 0, alive: true, grounded: true, coyote: 0, holdT: 0, jumping: false,
+    pushing: false, stuckT: 0, maxX: s.c + 0.5, sx: 1, sy: 1, runT: 0, dustT: 0, lookY: 0 };
+}
+function loadLevel(i, keepTotals = true) {
+  G.level = i; LV = parseLevel(LEVELS[i]);
+  G.frozen = []; G.legion = 0; G.levelTime = 0; G.doorOpen = false; G.doorAnim = 0;
+  G.particles = []; G.confetti = []; G.respawnT = 0; G.introT = 2.2; G.finishT = 0;
+  G.hero = newHero(); G.state = 'play'; G.jumpBuf = 0; G.held = false;
+  G.camX = camTarget(); if (!keepTotals) { G.totalDeaths = 0; G.totalTime = 0; G.totalStars = 0; }
+}
+
+// ---------- частицы ----------
+function puff(x, y, n, color, spread, up) {
+  for (let i = 0; i < n; i++) G.particles.push({ x, y, vx: (rnd() - 0.5) * spread, vy: -rnd() * up, life: 0.35 + rnd() * 0.3, t: 0, r: 0.06 + rnd() * 0.08, color, g: 6 });
+}
+function splash(x, y) {
+  for (let i = 0; i < 18; i++) { const a = rnd() * Math.PI * 2, sp = 2 + rnd() * 6; G.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3, life: 0.5 + rnd() * 0.5, t: 0, r: 0.08 + rnd() * 0.12, color: rnd() < 0.7 ? PAL.hero : '#ffd1e6', g: 22 }); }
+  G.shake = 0.25;
+}
+function confettiBurst(x, y) {
+  const cols = ['#ff6fae', '#7c5cff', '#58d68d', '#ffd166', '#ff9f43', '#6fd3ff'];
+  for (let i = 0; i < 70; i++) { const a = -Math.PI / 2 + (rnd() - 0.5) * 2.2, sp = 5 + rnd() * 9; G.confetti.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: rnd() * 6, vr: (rnd() - 0.5) * 12, life: 1.6 + rnd(), t: 0, color: cols[i % cols.length], w: 0.12 + rnd() * 0.1, h: 0.08 + rnd() * 0.08 }); }
+}
+function updateParticles(dt) {
+  for (const p of G.particles) { p.t += dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
+  G.particles = G.particles.filter(p => p.t < p.life);
+  for (const p of G.confetti) { p.t += dt; p.vy += 14 * dt; p.vx *= 0.98; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; }
+  G.confetti = G.confetti.filter(p => p.t < p.life);
+}
+
+// ---------- лазеры, плиты, двери ----------
+function laserOn(ls) { return ((G.levelTime + ls.phase) % LASER_PERIOD) < LASER_ON; }
+function laserWarn(ls) { const ph = (G.levelTime + ls.phase) % LASER_PERIOD; return ph > LASER_PERIOD - LASER_WARN; }
+function updateLasers() {
+  for (const ls of LV.lasers) { let r = ls.r + 1; while (r < ROWS && !isSolid(ls.c, r)) r++; ls.end = r; }
+}
+function platePressed(p) {
+  if (frozenAt(p.c, p.r - 1)) return true;
+  const h = G.hero; if (!h || !h.alive || !h.grounded) return false;
+  return Math.abs((h.y + HH) - p.r) < 0.05 && h.x + HW > p.c + 0.05 && h.x - HW < p.c + 0.95;
+}
+function updateDoors(dt) {
+  G.doorOpen = LV.plates.length > 0 && LV.plates.some(platePressed);
+  const target = G.doorOpen ? 1 : 0; G.doorAnim += (target - G.doorAnim) * Math.min(1, dt * 12);
+}
+
+// ---------- гибель и застывание ----------
+function placeFrozen(x, y) {
+  let c = Math.max(0, Math.min(COLS - 1, Math.floor(x))), r = Math.max(0, Math.min(ROWS - 1, Math.floor(y)));
+  const order = [[0, 0], [0, -1], [-1, 0], [1, 0], [0, 1], [-1, -1], [1, -1], [0, -2], [-1, 1], [1, 1]];
+  for (const [dc, dr] of order) { const cc = c + dc, rr = r + dr; if (cc >= 0 && cc < COLS && rr >= 0 && rr < ROWS && freeCell(cc, rr)) { G.frozen.push({ c: cc, r: rr, t: 0 }); return; } }
+  // шипы можно накрыть, если свободных клеток рядом нет
+  if (tile(c, r) === '^' && !isSolid(c, r)) G.frozen.push({ c, r, t: 0 });
+}
+function killHero(cause, src) {
+  const h = G.hero; if (!h.alive) return;
+  h.alive = false; h.cause = cause; G.respawnT = RESPAWN; G.legion++; G.totalDeaths++;
+  splash(h.x, h.y);
+  if (cause === 'fall') placeFrozen(h.x, ROWS - 0.5);
+  else if (cause === 'laser') placeFrozen(src.c + 0.5, Math.max(src.r + 1.5, h.y));
+  else placeFrozen(h.x, h.y);
+}
+function overlapRect(h, x0, y0, x1, y1, inset) {
+  return h.x + HW - inset > x0 && h.x - HW + inset < x1 && h.y + HH - inset > y0 && h.y - HH + inset < y1;
+}
+function checkHazards() {
+  const h = G.hero;
+  if (h.y - HH > ROWS + 0.3) return killHero('fall');
+  const c0 = Math.floor(h.x - HW), c1 = Math.floor(h.x + HW), r0 = Math.floor(h.y - HH), r1 = Math.floor(h.y + HH);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (tile(c, r) === '^' && !frozenAt(c, r) && overlapRect(h, c + 0.1, r + 0.15, c + 0.9, r + 1, 0.1)) return killHero('spike');
+  for (const s of LV.saws) { const dx = h.x - (s.c + 0.5), dy = h.y - (s.r + 0.5); if (dx * dx + dy * dy < 0.72 * 0.72) return killHero('saw'); }
+  // лазер: центр желейки должен быть ниже излучателя и внутри луча — тогда застывает ровно в столбе луча
+  for (const ls of LV.lasers) if (laserOn(ls) && h.x + HW - 0.1 > ls.c + 0.35 && h.x - HW + 0.1 < ls.c + 0.65 && h.y >= ls.r + 0.95 && h.y < ls.end) return killHero('laser', ls);
+  if (LV.flag && overlapRect(h, LV.flag.c + 0.2, LV.flag.r, LV.flag.c + 1, LV.flag.r + 1, 0)) finishLevel();
+}
+// ---------- физика героя ----------
+function cellsOverlap(h, insetX, insetY, fn) {
+  const c0 = Math.floor(h.x - HW + insetX), c1 = Math.floor(h.x + HW - insetX), r0 = Math.floor(h.y - HH + insetY), r1 = Math.floor(h.y + HH - insetY);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (isSolid(c, r)) fn(c, r);
+}
+function updateHero(dt) {
+  const h = G.hero;
+  // прыжок (буфер + койот-время)
+  if (G.jumpBuf > 0) G.jumpBuf -= dt;
+  if (G.jumpBuf > 0 && (h.grounded || h.coyote > 0)) {
+    h.vy = -JUMP_V; h.grounded = false; h.coyote = 0; h.jumping = true; h.holdT = 0; G.jumpBuf = 0;
+    h.sx = 0.8; h.sy = 1.25; puff(h.x, h.y + HH, 5, 'rgba(255,255,255,0.8)', 2, 1.5);
+  }
+  const g = (h.jumping && G.held && h.holdT < HOLD_MAX && h.vy < 0) ? GRAV_HOLD : GRAV;
+  if (h.jumping) h.holdT += dt;
+  h.vy = Math.min(VMAX, h.vy + g * dt);
+  // Y (сначала вертикаль — чтобы приземление на край блока работало)
+  const wasGrounded = h.grounded; h.grounded = false;
+  h.y += h.vy * dt;
+  cellsOverlap(h, 0.06, 0, (c, r) => {
+    if (h.vy >= 0 && h.y + HH > r && h.y - HH < r) { h.y = r - HH - 0.001; h.vy = 0; h.grounded = true; }
+    else if (h.vy < 0 && h.y - HH < r + 1 && h.y + HH > r + 1) { h.y = r + 1 + HH + 0.001; h.vy = 0; }
+  });
+  // X (бежит вправо; стена впереди — толкается и стоит на месте)
+  h.x += h.vx * dt; h.pushing = false;
+  cellsOverlap(h, 0, 0.06, (c, r) => { if (h.x + HW > c && h.x < c + 0.5) { h.x = c - HW - 0.001; h.pushing = true; } });
+  if (h.grounded) { h.coyote = 0.08; h.jumping = false; if (!wasGrounded) { h.sx = 1.35; h.sy = 0.65; puff(h.x, h.y + HH, 8, 'rgba(120,100,150,0.45)', 3, 1.2); } }
+  else if (h.coyote > 0) h.coyote -= dt;
+  // нет продвижения вперёд (стена, тупик под блоком) — желейка от стресса лопается
+  if (h.x > h.maxX + 0.02) { h.maxX = h.x; h.stuckT = 0; } else h.stuckT += dt;
+  if (h.stuckT > STUCK_LIMIT) { killHero('burst'); return; }
+  // анимация формы
+  h.runT += dt;
+  const tsx = h.grounded ? (h.pushing ? 0.86 + Math.sin(h.runT * 40) * 0.03 : 1 + Math.sin(h.runT * 18) * 0.04) : (h.vy < -4 ? 0.86 : h.vy > 6 ? 0.9 : 1);
+  const tsy = h.grounded ? (h.pushing ? 1.16 : 1 - Math.sin(h.runT * 18) * 0.04) : (h.vy < -4 ? 1.18 : h.vy > 6 ? 1.12 : 1);
+  h.sx += (tsx - h.sx) * Math.min(1, dt * 14); h.sy += (tsy - h.sy) * Math.min(1, dt * 14);
+  h.lookY += (((h.grounded ? 0 : h.vy / VMAX) * 0.25) - h.lookY) * Math.min(1, dt * 10);
+  checkHazards();
+}
+function finishLevel() {
+  const h = G.hero; h.alive = false; h.cause = 'win';
+  G.state = 'done'; G.finishT = 0;
+  const used = G.legion, par = LEVELS[G.level].par;
+  G.lastStars = used <= par ? 3 : used <= par + 2 ? 2 : 1;
+  G.totalStars += G.lastStars; G.totalTime += G.levelTime;
+  confettiBurst(LV.flag.c + 0.5, LV.flag.r + 0.3);
+}
+function camTarget() {
+  if (!L.portrait || !G.hero) return 0;
+  const worldW = COLS * L.cs; const t = G.hero.x * L.cs - L.viewW * 0.38;
+  return Math.max(0, Math.min(worldW - L.viewW, t));
+}
+// ---------- главный шаг ----------
+Proto.update = (dt) => {
+  G.frame++;
+  if (G.state === 'start' || G.state === 'final') { updateParticles(dt); return; }
+  if (G.state === 'play') {
+    G.levelTime += dt; if (G.introT > 0) G.introT -= dt;
+    updateLasers();
+    const h = G.hero;
+    if (h.alive) updateHero(dt);
+    else { G.respawnT -= dt; if (G.respawnT <= 0) { G.hero = newHero(); G.camX = camTarget(); } }
+    updateDoors(dt);
+  } else if (G.state === 'done') { G.finishT += dt; updateDoors(dt); updateLasers(); }
+  for (const f of G.frozen) f.t += dt;
+  if (G.shake > 0) G.shake -= dt;
+  updateParticles(dt);
+  if (L.portrait) { const t = camTarget(); G.camX += (t - G.camX) * Math.min(1, dt * 8); }
+};
+// ---------- рисование: примитивы ----------
+let ctx = null;
+function fmt(t) { t = Math.floor(t); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
+function star(cx, cy, R, r, fill) {
+  ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? r : R; ctx.lineTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad); }
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+}
+function wrap(str, maxW, size) {
+  ctx.font = `700 ${size}px system-ui, sans-serif`; const words = str.split(' '), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur); return lines;
+}
+// желейка: x — центр, fy — уровень ступней (в клетках), sx/sy — сквош, kind: 'hero' | 'frozen'
+function blob(x, fy, sx, sy, kind, lookY = 0, scale = 1) {
+  const w = 0.8 * sx * scale, h = 0.8 * sy * scale, x0 = x - w / 2, y0 = fy - h, rad = Math.min(w, h) * 0.36;
+  const frozen = kind === 'frozen';
+  ctx.globalAlpha = frozen ? 1 : 0.92;
+  roundRect(x0, y0, w, h, rad, frozen ? PAL.frozen : PAL.hero);
+  ctx.lineWidth = 0.045; ctx.strokeStyle = frozen ? PAL.frozenDark : PAL.heroDark; ctx.stroke();
+  // блик
+  ctx.globalAlpha = frozen ? 0.35 : 0.55; ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.ellipse(x0 + w * 0.3, y0 + h * 0.24, w * 0.14, h * 0.09, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  const ey = y0 + h * 0.42, ex = x + w * 0.08;
+  if (frozen) {
+    ctx.strokeStyle = PAL.frozenDark; ctx.lineWidth = 0.05; ctx.lineCap = 'round';
+    for (const dx of [-0.15, 0.15]) { const cx = ex + dx * w / 0.8; ctx.beginPath(); ctx.moveTo(cx - 0.06, ey - 0.06); ctx.lineTo(cx + 0.06, ey + 0.06); ctx.moveTo(cx + 0.06, ey - 0.06); ctx.lineTo(cx - 0.06, ey + 0.06); ctx.stroke(); }
+  } else {
+    for (const dx of [-0.15, 0.15]) {
+      const cx = ex + dx * w / 0.8;
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, ey, 0.095, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PAL.ink; ctx.beginPath(); ctx.arc(cx + 0.035, ey + lookY * 0.06, 0.05, 0, Math.PI * 2); ctx.fill();
+    }
+    // улыбка
+    ctx.strokeStyle = PAL.heroDark; ctx.lineWidth = 0.035; ctx.beginPath(); ctx.arc(ex, ey + 0.13, 0.09, 0.25, Math.PI - 0.25); ctx.stroke();
+  }
+}
+function restartGlyph(cx, cy, r) {
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(2.5, r * 0.28); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.62, -Math.PI * 0.15, Math.PI * 1.45); ctx.stroke();
+  const a = -Math.PI * 0.15, px = cx + Math.cos(a) * r * 0.62, py = cy + Math.sin(a) * r * 0.62;
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(px + r * 0.05, py - r * 0.42); ctx.lineTo(px + r * 0.38, py + r * 0.1); ctx.lineTo(px - r * 0.3, py + r * 0.05); ctx.closePath(); ctx.fill();
+}
+// ---------- рисование: мир (координаты в клетках) ----------
+function drawWorld(W, H) {
+  const cs = L.cs, t = G.levelTime;
+  const shx = G.shake > 0 ? Math.sin(G.frame * 1.7) * G.shake * 12 : 0, shy = G.shake > 0 ? Math.cos(G.frame * 2.3) * G.shake * 8 : 0;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(L.mapX, L.mapY, L.viewW, L.viewH); ctx.clip();
+  ctx.translate(L.mapX - G.camX + shx, L.mapY + shy); ctx.scale(cs, cs);
+  // декор: облака и холмы
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  for (let i = 0; i < 4; i++) { const cx = ((i * 6.3 + t * 0.12) % (COLS + 6)) - 3, cy = 1 + (i % 2) * 1.6; ctx.beginPath(); ctx.ellipse(cx, cy, 1.5, 0.5, 0, 0, Math.PI * 2); ctx.ellipse(cx + 0.9, cy - 0.25, 0.9, 0.45, 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(190,170,230,0.28)';
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.ellipse(i * 5.5 + 2, 10.4, 3.6, 1.6, 0, Math.PI, 0); ctx.fill(); }
+  // земля
+  ctx.fillStyle = PAL.ground;
+  for (let r = 0; r < ROWS; r++) { let c = 0; while (c < COLS) { const tl = LV.grid[r][c]; if (tl === '#' || tl === 'P') { let c2 = c; while (c2 < COLS && (LV.grid[r][c2] === '#' || LV.grid[r][c2] === 'P')) c2++; ctx.fillRect(c - 0.01, r - 0.01, c2 - c + 0.02, 1.03); c = c2; } else c++; } }
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const tl = LV.grid[r][c];
+    if (tl === '#' || tl === 'P') {
+      const above = tile(c, r - 1); const exposed = r === 0 ? false : (above !== '#' && above !== 'P');
+      if (exposed) { const left = !(tile(c - 1, r) === '#' || tile(c - 1, r) === 'P') || (tile(c - 1, r - 1) === '#' || tile(c - 1, r - 1) === 'P'); let c2 = c; while (c2 + 1 < COLS && (LV.grid[r][c2 + 1] === '#' || LV.grid[r][c2 + 1] === 'P') && !(tile(c2 + 1, r - 1) === '#' || tile(c2 + 1, r - 1) === 'P')) c2++; if (left) { ctx.fillStyle = PAL.grassDark; ctx.fillRect(c, r, c2 - c + 1, 0.26); roundRect(c - 0.02, r - 0.06, c2 - c + 1.04, 0.24, 0.1, PAL.grass); } }
+      if (tl === 'P') { const pr = platePressed({ c, r }); ctx.fillStyle = PAL.plateDark; ctx.fillRect(c + 0.08, r, 0.84, 0.34); roundRect(c + 0.05, r - 0.04, 0.9, pr ? 0.18 : 0.3, 0.06, pr ? '#ffe28a' : PAL.plate); }
+    }
+  }
+  // двери
+  for (const d of LV.doors) {
+    ctx.fillStyle = PAL.doorDark; ctx.fillRect(d.c + 0.08, d.r, 0.1, 1); ctx.fillRect(d.c + 0.82, d.r, 0.1, 1);
+    const hgt = 1 - G.doorAnim; if (hgt > 0.02) { roundRect(d.c + 0.14, d.r, 0.72, hgt, 0.05, PAL.door); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(d.c + 0.2, d.r + 0.08 * hgt, 0.12, hgt * 0.85); }
+  }
+  // шипы
+  ctx.lineWidth = 0.035; ctx.strokeStyle = PAL.spikeEdge; ctx.fillStyle = PAL.spike;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (LV.grid[r][c] === '^' && !frozenAt(c, r)) {
+    ctx.beginPath(); for (let k = 0; k < 3; k++) { const x0 = c + k / 3; ctx.moveTo(x0 + 0.02, r + 1); ctx.lineTo(x0 + 1 / 6, r + 0.15); ctx.lineTo(x0 + 1 / 3 - 0.02, r + 1); } ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  // пилы
+  for (const s of LV.saws) {
+    ctx.save(); ctx.translate(s.c + 0.5, s.r + 0.5); ctx.rotate(t * 5);
+    ctx.beginPath(); for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12, rad = i % 2 ? 0.34 : 0.46; ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad); } ctx.closePath();
+    ctx.fillStyle = PAL.saw; ctx.fill(); ctx.strokeStyle = PAL.sawDark; ctx.lineWidth = 0.04; ctx.stroke();
+    ctx.fillStyle = PAL.sawDark; ctx.beginPath(); ctx.arc(0, 0, 0.13, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(107,104,128,0.5)'; ctx.lineWidth = 0.05; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 0.3, Math.sin(a) * 0.3); ctx.lineTo(-Math.cos(a) * 0.3, -Math.sin(a) * 0.3); ctx.stroke(); }
+    ctx.restore();
+  }
+  // лазеры
+  for (const ls of LV.lasers) {
+    const on = laserOn(ls), warn = laserWarn(ls), x = ls.c + 0.5, y0 = ls.r + 0.5, y1 = ls.end;
+    if (on) {
+      const fl = 1 + Math.sin(t * 50) * 0.12;
+      ctx.fillStyle = PAL.laser; ctx.fillRect(x - 0.19 * fl, y0, 0.38 * fl, y1 - y0);
+      ctx.fillStyle = PAL.laserCore; ctx.fillRect(x - 0.05, y0, 0.1, y1 - y0);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(x - 0.02, y0, 0.04, y1 - y0);
+      ctx.fillStyle = 'rgba(255,120,120,0.5)'; ctx.beginPath(); ctx.ellipse(x, y1, 0.3, 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (warn) {
+      ctx.strokeStyle = 'rgba(255,90,90,0.45)'; ctx.lineWidth = 0.04; ctx.setLineDash([0.12, 0.14]); ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke(); ctx.setLineDash([]);
+    }
+    roundRect(ls.c + 0.18, ls.r + 0.04, 0.64, 0.46, 0.1, PAL.ground);
+    ctx.fillStyle = on ? '#ff5a5a' : warn ? '#ffb0b0' : '#7a5c8f'; ctx.beginPath(); ctx.arc(x, ls.r + 0.44, on ? 0.14 : 0.11, 0, Math.PI * 2); ctx.fill();
+  }
+  // флаг
+  if (LV.flag) {
+    const f = LV.flag, fx = f.c + 0.28, wave = Math.sin(t * 6) * 0.06;
+    ctx.strokeStyle = PAL.ground; ctx.lineWidth = 0.08; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(fx, f.r + 1); ctx.lineTo(fx, f.r + 0.02); ctx.stroke();
+    ctx.fillStyle = G.state === 'done' ? PAL.star : PAL.flag; ctx.beginPath(); ctx.moveTo(fx, f.r + 0.04); ctx.lineTo(fx + 0.68 + wave, f.r + 0.3 - wave); ctx.lineTo(fx, f.r + 0.56); ctx.closePath(); ctx.fill();
+  }
+  // застывшие желейки
+  for (const f of G.frozen) { const k = f.t < 0.3 ? 1 + (0.3 - f.t) * 0.9 : 1; blob(f.c + 0.5, f.r + 1, k, 2 - k, 'frozen', 0, 1); }
+  // герой
+  const h = G.hero;
+  if (h && (h.alive || h.cause === 'win')) {
+    if (h.alive && h.stuckT > STUCK_LIMIT - 0.9) { ctx.save(); ctx.translate(Math.sin(G.frame * 2.1) * 0.04, 0); blob(h.x, h.y + HH, h.sx * 1.1, h.sy * 0.95, 'hero', h.lookY); ctx.restore(); }
+    else if (h.alive) blob(h.x, h.y + HH, h.sx, h.sy, 'hero', h.lookY);
+    else { const bounce = Math.abs(Math.sin(G.finishT * 8)) * 0.35; blob(h.x, h.y + HH - bounce, 1 - bounce * 0.3, 1 + bounce * 0.4, 'hero', -0.6); }
+  }
+  // частицы
+  for (const p of G.particles) { const a = 1 - p.t / p.life; ctx.globalAlpha = a; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.6 + a * 0.4), 0, Math.PI * 2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  for (const p of G.confetti) { ctx.save(); ctx.globalAlpha = Math.min(1, (p.life - p.t) * 1.5); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore(); }
+  ctx.restore();
+}
+// ---------- рисование: HUD и экраны ----------
+function drawBackground(W, H) {
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, PAL.bg0); g.addColorStop(1, PAL.bg1);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+function drawHUD(W, H, portrait) {
+  const lvl = `Уровень ${G.level + 1}/6`, leg = `Легион: ${G.legion}`, tm = fmt(G.levelTime);
+  if (!portrait) {
+    text(lvl, 12, 10, 15, PAL.ink, 'left', 800, null); text(leg, W / 2, 10, 15, PAL.heroDark, 'center', 800, null); text(tm, W - 56, 10, 15, PAL.ink, 'right', 800, null);
+  } else {
+    text(lvl, 16, 32, 22, PAL.ink, 'left', 800, null); text(tm, W - 76, 32, 22, PAL.ink, 'right', 800, null); text(leg, 16, 66, 22, PAL.heroDark, 'left', 800, null);
+    const lv = LEVELS[G.level], y = L.mapY + L.viewH + 44;
+    text(`${lv.name}`, W / 2, y, 26, PAL.ink, 'center', 800, null);
+    const lines = wrap(lv.hint, W - 48, 18); lines.forEach((ln, i) => text(ln, W / 2, y + 36 + i * 24, 18, PAL.inkSoft, 'center', 700, null));
+    text('Тап — прыжок · держи — выше', W / 2, H - 36, 16, PAL.inkSoft, 'center', 700, null);
+  }
+  const b = L.btnRestart; roundRect(b.x, b.y, b.w, b.h, 10, PAL.btn); restartGlyph(b.x + b.w / 2, b.y + b.h / 2, b.w * 0.42);
+}
+function drawHint(W, H, portrait) {
+  if (portrait || G.introT > 0.3) return;
+  const a = G.introT <= 0 ? 1 : (0.3 - G.introT) / 0.3, lv = LEVELS[G.level];
+  ctx.font = '700 20px system-ui, sans-serif'; const w = ctx.measureText(lv.hint).width + 44, y = L.mapY + 1.6 * L.cs;
+  ctx.globalAlpha = a * 0.9; roundRect(W / 2 - w / 2, y - 22, w, 44, 14, 'rgba(255,255,255,0.7)');
+  text(lv.hint, W / 2, y, 20, PAL.inkSoft, 'center', 700, null); ctx.globalAlpha = 1;
+}
+function drawIntro(W, H) {
+  if (G.introT <= 0) return;
+  const a = Math.min(1, G.introT / 0.4) * Math.min(1, (2.2 - G.introT) / 0.25 + 0.01);
+  ctx.globalAlpha = Math.max(0, Math.min(1, a));
+  const y = L.mapY + 1.6 * L.cs, w = Math.min(W - 32, 420);
+  roundRect(W / 2 - w / 2, y - 30, w, 60, 16, PAL.panel);
+  text(`Уровень ${G.level + 1} — ${LEVELS[G.level].name}`, W / 2, y, 26, PAL.ink, 'center', 800, null);
+  ctx.globalAlpha = 1;
+}
+function drawStart(W, H, portrait) {
+  const cs = portrait ? 44 : 52, t = performance.now() / 1000;
+  // сцена-иллюстрация: лесенка из застывших и живая желейка
+  ctx.save(); ctx.translate(W / 2 - 4.5 * cs, portrait ? H * 0.62 : H * 0.72); ctx.scale(cs, cs);
+  ctx.fillStyle = PAL.ground; ctx.fillRect(-2, 0, 13, 1.2); ctx.fillStyle = PAL.grass; roundRect(-2, -0.08, 13, 0.3, 0.1, PAL.grass);
+  ctx.fillStyle = PAL.ground; ctx.fillRect(6, -3, 5, 3.3); ctx.fillStyle = PAL.grass; roundRect(6, -3.08, 5, 0.3, 0.1, PAL.grass);
+  blob(5.5, 0, 1, 1, 'frozen'); blob(5.5, -1, 1, 1, 'frozen'); blob(5.5, -2, 1, 1, 'frozen');
+  const jy = -Math.abs(Math.sin(t * 2.2)) * 1.6, jx = 1.5 + ((t * 1.1) % 3.2);
+  blob(jx, jy, 1 - Math.abs(jy) * 0.08, 1 + Math.abs(jy) * 0.12, 'hero', jy < -0.8 ? -0.5 : 0.3);
+  ctx.restore();
+  text('Желейный легион', W / 2, portrait ? H * 0.2 : H * 0.22, portrait ? 44 : 56, PAL.ink, 'center', 900, null);
+  const sub = 'Тап — прыжок. Каждая погибшая желейка застывает и становится частью уровня';
+  wrap(sub, W - 60, portrait ? 20 : 22).forEach((ln, i) => text(ln, W / 2, (portrait ? H * 0.2 + 56 : H * 0.22 + 60) + i * 28, portrait ? 20 : 22, PAL.inkSoft, 'center', 700, null));
+  ctx.globalAlpha = 0.6 + Math.sin(t * 4) * 0.4;
+  text('Нажми, чтобы начать', W / 2, portrait ? H * 0.84 : H * 0.9, portrait ? 24 : 26, PAL.btn, 'center', 800, null);
+  ctx.globalAlpha = 1;
+}
+function panelButtons(W, y, labels) {
+  L.buttons = []; const bw = Math.min(200, (Math.min(W - 40, 520) - 60) / 2), bh = 54, gap = 20, x0 = W / 2 - (bw * labels.length + gap * (labels.length - 1)) / 2;
+  labels.forEach(([id, label, fill], i) => { const x = x0 + i * (bw + gap); roundRect(x, y, bw, bh, 14, fill); text(label, x + bw / 2, y + bh / 2, 21, '#fff', 'center', 800, null); L.buttons.push({ id, ...mkBtn(x, y, bw, bh) }); });
+}
+function drawDone(W, H) {
+  const a = Math.min(1, G.finishT / 0.35); if (a <= 0) return;
+  ctx.globalAlpha = a;
+  const w = Math.min(W - 40, 520), h = 320, x = W / 2 - w / 2, y = H / 2 - h / 2 - (1 - a) * 30;
+  roundRect(x, y, w, h, 22, PAL.panel); ctx.lineWidth = 3; ctx.strokeStyle = PAL.btn2; ctx.stroke();
+  text('Уровень пройден!', W / 2, y + 44, 32, PAL.ink, 'center', 900, null);
+  const used = G.legion, par = LEVELS[G.level].par;
+  text(`Желеек потрачено: ${used} (пар ${par})`, W / 2, y + 96, 20, PAL.inkSoft, 'center', 700, null);
+  for (let i = 0; i < 3; i++) { const sc = i < G.lastStars ? 1 : 0.85; star(W / 2 + (i - 1) * 64, y + 158, 26 * sc, 11 * sc, i < G.lastStars ? PAL.star : PAL.starOff); }
+  text(`Время: ${fmt(G.levelTime)}`, W / 2, y + 212, 20, PAL.inkSoft, 'center', 700, null);
+  panelButtons(W, y + 246, [['retry', 'Ещё раз', PAL.btn2], ['next', G.level === LEVELS.length - 1 ? 'Итоги' : 'Дальше', PAL.btn]]);
+  ctx.globalAlpha = 1;
+}
+function drawFinal(W, H) {
+  const w = Math.min(W - 40, 520), h = 340, x = W / 2 - w / 2, y = H / 2 - h / 2;
+  roundRect(x, y, w, h, 22, PAL.panel); ctx.lineWidth = 3; ctx.strokeStyle = PAL.btn2; ctx.stroke();
+  text('Прототип пройден!', W / 2, y + 48, 32, PAL.ink, 'center', 900, null);
+  text(`Желеек потрачено: ${G.totalDeaths}`, W / 2, y + 108, 21, PAL.inkSoft, 'center', 700, null);
+  text(`Общее время: ${fmt(G.totalTime)}`, W / 2, y + 144, 21, PAL.inkSoft, 'center', 700, null);
+  text(`Звёзд: ${G.totalStars} из ${LEVELS.length * 3}`, W / 2, y + 180, 21, PAL.inkSoft, 'center', 700, null);
+  star(W / 2, y + 230, 26, 11, PAL.star);
+  panelButtons(W, y + 268, [['restartAll', 'Сначала', PAL.btn]]);
+}
+Proto.draw = (c, W, H, portrait) => {
+  ctx = c;
+  drawBackground(W, H);
+  if (G.state === 'start') { drawStart(W, H, portrait); return; }
+  if (G.state === 'final') { drawFinal(W, H); return; }
+  drawWorld(W, H);
+  drawHint(W, H, portrait);
+  drawHUD(W, H, portrait);
+  drawIntro(W, H);
+  if (G.state === 'done') drawDone(W, H);
+};
+// ---------- ввод ----------
+function press() {
+  if (G.state === 'start') { loadLevel(0, false); return; }
+  if (G.state === 'play') { G.held = true; G.jumpBuf = 0.12; }
+}
+function restartLevel() { const lv = G.level; loadLevel(lv); }
+function handleButton(id) {
+  if (id === 'retry') restartLevel();
+  else if (id === 'next') { if (G.level + 1 < LEVELS.length) loadLevel(G.level + 1); else { G.state = 'final'; G.confetti = []; } }
+  else if (id === 'restartAll') loadLevel(0, false);
+}
+Proto.onDown = (x, y) => {
+  if (G.state === 'play' || G.state === 'done') { const b = L.btnRestart; if (b && b.hit(x, y)) { restartLevel(); return; } }
+  if (G.state === 'done' || G.state === 'final') { for (const b of L.buttons) if (b.hit(x, y)) { handleButton(b.id); return; } if (G.state === 'final') return; if (G.finishT > 0.6) handleButton('next'); return; }
+  press();
+};
+Proto.onUp = () => { G.held = false; };
+Proto.onKey = (key, down) => {
+  const isJump = key === ' ' || key === 'ArrowUp' || key === 'w' || key === 'W' || key === 'ц' || key === 'Ц';
+  if (down) {
+    if (isJump) { if (G.state === 'done' && G.finishT > 0.6) handleButton('next'); else press(); }
+    else if (key === 'Enter') { if (G.state === 'done') handleButton('next'); else if (G.state === 'final') handleButton('restartAll'); else press(); }
+    else if (key === 'r' || key === 'R' || key === 'к' || key === 'К') { if (G.state === 'play' || G.state === 'done') restartLevel(); }
+  } else if (isJump) G.held = false;
+};
+// ---------- раскладка ----------
+Proto.onResize = (W, H, portrait) => {
+  L.portrait = portrait;
+  if (!portrait) { L.cs = 40; L.mapX = 0; L.mapY = 20; L.viewW = 960; L.viewH = 520; L.btnRestart = mkBtn(W - 42, 4, 38, 38); }
+  else { L.cs = 42; L.viewW = W; L.viewH = ROWS * 42; L.mapX = 0; L.mapY = 104; L.btnRestart = mkBtn(W - 60, 14, 48, 48); }
+  G.camX = camTarget();
+};
+function mkBtn(x, y, w, h) { return { x, y, w, h, hit: (px, py) => px >= x - 6 && px <= x + w + 6 && py >= y - 6 && py <= y + h + 6 }; }
+LV = parseLevel(LEVELS[0]);
+Proto.start({ landscape: [960, 540], portrait: [540, 960] });
+// отладочный доступ для автотестов
+window.__proto.game = { get G() { return G; }, get LV() { return LV; }, L, LEVELS, loadLevel, isSolid, tile, HW, HH };
+window.__proto.ready = true;
+})();
+</script>
+</body>
+</html>

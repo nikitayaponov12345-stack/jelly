@@ -1,0 +1,33 @@
+key,ru,en
+game.title,Желейный легион,Jelly Legion
+ui.tap_to_start,"Нажми, чтобы начать",Tap to start
+ui.tap_jump,Тап — прыжок · держи — выше,Tap to jump · hold to jump higher
+ui.level,Уровень {n},Level {n}
+ui.level_title,Уровень {n} — {name},Level {n} — {name}
+ui.legion,Легион: {n},Legion: {n}
+ui.legion_par,Легион: {n} / пар {par},Legion: {n} / par {par}
+ui.restart,Заново,Restart
+ui.level_done,Уровень пройден!,Level complete!
+ui.used,Желеек: {n} (пар {par}),Jellies: {n} (par {par})
+ui.time,Время: {t},Time: {t}
+ui.retry,Ещё раз,Retry
+ui.next,Дальше,Next
+ui.results,Итоги,Results
+ui.pack_done,Набор пройден!,Pack complete!
+ui.total_jellies,Желеек всего: {n},Jellies used: {n}
+ui.total_time,Общее время: {t},Total time: {t}
+ui.total_stars,Звёзд: {n} из {max},Stars: {n} of {max}
+ui.from_start,Сначала,Start over
+world.proto.name,Прототип,Prototype
+level.p-01.name,Яма,The Pit
+level.p-01.hint,Прыгай позже… или не прыгай,Jump later… or don't jump at all
+level.p-02.name,Плита,The Plate
+level.p-02.hint,Плита держит дверь. Кто-то должен остаться,The plate holds the door. Someone has to stay
+level.p-03.name,Лазер,The Laser
+level.p-03.hint,Лазер бьёт сверху. Прыгни в него,The laser strikes from above. Jump into it
+level.p-04.name,Лестница,The Stairs
+level.p-04.hint,Стена высокая. Строй лестницу,The wall is high. Build a staircase
+level.p-05.name,Пилы,Saws
+level.p-05.hint,Пилы не ждут. Заполняй,Saws don't wait. Fill it up
+level.p-06.name,Всё вместе,All Together
+level.p-06.hint,"Яма, лазер, плита, пила, стена","Pit, laser, plate, saw, wall"
