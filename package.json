@@ -1,7 +1,7 @@
 {
   "name": "jelly",
   "private": true,
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
@@ -14,7 +14,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "check": "npm run data && npm run test && npm run build && npm run e2e",
-    "publish": "node tools/publish.mjs"
+    "publish": "node tools/publish.mjs",
+    "solve": "vite build --config tools/solve.config.ts && node build/solve/solve.mjs"
   },
   "dependencies": {
     "pixi.js": "8.21.0"

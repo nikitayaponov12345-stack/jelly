@@ -41,11 +41,13 @@ export class Run {
   private bodyKeys = new Set<number>();
   private events: RunEvent[] = [];
 
+  /** grid — сетка уровня def, если она уже есть (копии попытки делят одну сетку). */
   constructor(
     readonly def: LevelDef,
     readonly P: Physics,
+    grid?: Grid,
   ) {
-    this.grid = new Grid(def, P.laserAltPhase);
+    this.grid = grid ?? new Grid(def, P.laserAltPhase);
     this.hero = newHero(this.grid.start, P);
     this.beamEnds = this.grid.lasers.map(() => this.grid.rows);
     this.updateBeams();
@@ -126,6 +128,24 @@ export class Run {
   platePressed(i: number): boolean {
     const p = this.grid.plates[i];
     return p !== undefined && platePressed(p, this.hero, this.isBody, this.P);
+  }
+
+  /** Копия попытки для перебора ботом: своя желейка, тела, время и нажатия, сетка общая, событий нет. */
+  clone(): Run {
+    const r = new Run(this.def, this.P, this.grid);
+    r.state = this.state;
+    r.hero = { ...this.hero };
+    r.bodies = this.bodies.slice();
+    r.bodyKeys = new Set(this.bodyKeys);
+    r.legion = this.legion;
+    r.time = this.time;
+    r.doorOpen = this.doorOpen;
+    r.respawnT = this.respawnT;
+    r.stars = this.stars;
+    r.beamEnds = this.beamEnds.slice();
+    r.ctl.jumpBuf = this.ctl.jumpBuf;
+    r.ctl.held = this.ctl.held;
+    return r;
   }
 
   /** События шагов с прошлого вызова (для отрисовки и звука). */

@@ -17,7 +17,7 @@ import { Hud } from './ui/hud';
 import { RestartButton } from './ui/restart-button';
 import { Windows } from './ui/windows';
 
-const VERSION = '0.0.4';
+const VERSION = '0.0.5';
 /** Метка сборки: короткий хеш коммита от `npm run publish`, иначе 'dev'. */
 const BUILD = import.meta.env.VITE_BUILD ?? 'dev';
 
