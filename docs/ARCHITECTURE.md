@@ -18,7 +18,7 @@
 ## 2. Папки
 
 ```
-data/                 таблицы (CSV, UTF-8 без BOM), уровни data/levels/*.txt и решения бота data/solutions/*.json (M0-04); описание — data/README.md
+data/                 таблицы (CSV, UTF-8 без BOM), уровни data/levels/*.txt и решения бота data/solutions/*.json (M0-04; с запасом — M0-05); описание — data/README.md
 translations/         strings.csv: key, ru, en
 src/core/             правила игры (инвариант 1)
   clock.ts            FixedStep — фиксированный шаг (этап 0)
@@ -33,7 +33,8 @@ src/core/             правила игры (инвариант 1)
   freeze.ts           где застывает тело (M0-01)
   mechanisms.ts       плиты и двери (M0-01)
   stars.ts            звёзды за легион и пар (M0-01)
-  solver/             бот-решатель: solve.ts — пар и самое быстрое решение, replay.ts — повтор решения, запас нажатий, отпечаток карты (M0-04)
+  solver/             бот-решатель: solve.ts — строгий бот и перебор жизни желейки (M0-04); robust.ts — бот с запасом: пар и подсказка-призрак (M0-05);
+                      replay.ts — повтор решения по жизням, запас нажатий и тапов, отпечаток карты
 src/data.ts           таблицы и уровни для игры и тестов: импорт через `?raw` → loadTables
 src/game/             отрисовка PixiJS и ввод (инвариант 9)
   stage.ts, layout.ts холст, раскладки и вписывание экрана (этап 0)
@@ -57,7 +58,7 @@ src/platform/         Platform, заглушка, с M4 — адаптер Playg
 src/debug.ts          window.__game — для тестов Playwright и ботов
 tests/unit/           Vitest: ядро, данные, раскладка
 tests/e2e/            Playwright: смоук и сценарии собранной игры в двух раскладках
-tools/                data-check.mjs, size-report.mjs, publish.mjs; solve.ts и solve.config.ts — бот-решатель `npm run solve` (M0-04)
+tools/                data-check.mjs, size-report.mjs, publish.mjs; solve.ts и solve.config.ts — бот-решатель `npm run solve` (M0-04, M0-05)
 docs/                 GDD.md, ARCHITECTURE.md, ROADMAP.md, TESTPLAN.md, tasks/, research/
 ```
 
@@ -116,7 +117,7 @@ ticker (кадр PixiJS)
 
 - Сборка до старта — не больше 3 МБ сжатых данных (`tools/size-report.mjs` падает при превышении).
 - Загрузка до игры — до 4 с; 60 кадров в секунду на телефоне Никиты со ста телами на поле.
-- `npm run test` — до 30 с; долгие прогоны бота — отдельной командой: `npm run solve` (M0-04) — около 20 с на шесть уровней прототипа.
+- `npm run test` — до 30 с (сторож бота на четырёх быстрых уровнях прототипа — около 3 с); долгие прогоны бота — отдельной командой: `npm run solve` — около минуты на шесть уровней прототипа (бот с запасом, M0-05; строгий бот — около 15 с из неё).
 
 ## 11. Порядок выполнения задачи
 
