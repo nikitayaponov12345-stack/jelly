@@ -11,7 +11,7 @@ describe('разбор уровней', () => {
   it('шесть уровней прототипа', () => {
     const levels = allLevels(DATA);
     expect(levels.map((l) => l.id)).toEqual(['p-01', 'p-02', 'p-03', 'p-04', 'p-05', 'p-06']);
-    expect(levels.map((l) => l.par)).toEqual([1, 1, 0, 2, 0, 1]);
+    expect(levels.map((l) => l.par)).toEqual([1, 1, 0, 2, 1, 2]);
     for (const l of levels) {
       expect(l.limit).toBeNull();
       expect(l.file).toBe('proto');

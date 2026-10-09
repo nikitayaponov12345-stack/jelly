@@ -30,7 +30,7 @@ test('игра запускается и рисует сцену', async ({ page
   // Сборка `npm run check` идёт без метки публикации.
   expect(await page.evaluate(() => window.__game!.build)).toBe('dev');
   // Язык страницы берётся из браузера: ru — «Желейный легион», иначе «Jelly Legion».
-  await expect(page.getByTestId('debug-line')).toContainText(/(Желейный легион|Jelly Legion) 0\.0\.5/);
+  await expect(page.getByTestId('debug-line')).toContainText(/(Желейный легион|Jelly Legion) 0\.0\.6/);
 
   await page.screenshot({ path: `build/shots/m0-03_${info.project.name}.png` });
   expect(errors).toEqual([]);

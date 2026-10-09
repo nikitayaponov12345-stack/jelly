@@ -110,7 +110,7 @@ const REQUIRED_CONSTANTS = [
   'fall_out_margin', 'spike_x0', 'spike_x1', 'spike_y0', 'spike_hero_inset', 'saw_radius', 'laser_period_s', 'laser_on_s',
   'laser_warn_s', 'laser_alt_phase_s', 'laser_x0', 'laser_x1', 'laser_hero_inset', 'laser_min_dy', 'laser_freeze_dy',
   'plate_eps', 'plate_edge', 'flag_x0', 'stars_2_extra', 'intro_s', 'done_input_delay_s', 'camera_lead', 'camera_smooth',
-  'skip_after_extra_deaths', 'skip_after_s', 'extra_jellies',
+  'skip_after_extra_deaths', 'skip_after_s', 'extra_jellies', 'par_window_s', 'par_tap_s',
 ];
 const constants = load('data/constants.csv', ['key', 'value', 'unit', 'note']);
 unique(constants, (r) => r.key, 'data/constants.csv');
