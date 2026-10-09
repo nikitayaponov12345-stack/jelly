@@ -1,9 +1,24 @@
+import type { RunState } from './core/run';
 import type { Layout } from './game/layout';
 import type { PlatformCall } from './platform/platform';
 
+/** Состояние попытки для тестов и ботов (только чтение). */
+export interface DebugState {
+  level: string;
+  state: RunState;
+  legion: number;
+  /** Время уровня, с. */
+  time: number;
+  stars: number;
+  hero: { x: number; y: number; vx: number; vy: number; alive: boolean; grounded: boolean };
+  bodies: Array<{ c: number; r: number }>;
+  doorOpen: boolean;
+  lasers: Array<{ on: boolean; warn: boolean; end: number }>;
+}
+
 /**
  * Отладочный доступ к игре для тестов Playwright и ботов: `window.__game`.
- * Этап 0 — только заглушка; задачи M0 расширяют интерфейс (уровень, желейка, тела, команды).
+ * Чтение состояния и команды — те же, что подаёт слой ввода; расширяется задачами.
  */
 export interface GameDebug {
   ready: boolean;
@@ -11,9 +26,17 @@ export interface GameDebug {
   /** Метка сборки: хеш коммита (с '+' при незакоммиченных правках) или 'dev'. */
   build: string;
   layout(): Layout;
-  /** Игровое время с запуска, мс. */
+  /** Игровое время с запуска, мс (все шаги ядра, на любом уровне). */
   gameMs(): number;
   platformLog(): PlatformCall[];
+  /** Id уровней игры по порядку. */
+  levels(): string[];
+  /** Новая попытка на уровне id (состояние ready). Нет такого уровня — исключение. */
+  setLevel(id: string): void;
+  state(): DebugState;
+  command: { press(): void; release(): void; restart(): void };
+  /** Прогнать ядро на ms игрового времени сразу, без кадров: round(ms / шаг) шагов. */
+  advance(ms: number): void;
 }
 
 declare global {
