@@ -62,3 +62,16 @@ level.w1-14.name,Три цвета,Three Colors
 level.w1-14.hint,Каждой двери — своя плита,Every door has its own plate
 level.w1-15.name,Карамельный цех,Caramel Workshop
 level.w1-15.hint,"Всё, чему научился",Everything you've learned
+world.pz.name,Головоломки — проба,Puzzles — Trial
+level.pz-01.name,Подставка,Step Stool
+level.pz-01.hint,"Где погибнешь — там застынешь, даже в прыжке",You freeze where you fall — even mid-jump
+level.pz-02.name,Мёртвый груз,Dead Weight
+level.pz-02.hint,Плите нужен груз,The plate needs a weight
+level.pz-03.name,Дрожь,The Shivers
+level.pz-03.hint,Задрожала — прыгай: застынет выше,Shaking? Jump — it freezes higher
+level.pz-04.name,Мост в воздухе,Air Bridge
+level.pz-04.hint,На дне тело не поможет,A body at the bottom won't help
+level.pz-05.name,Две пилы,Two Saws
+level.pz-05.hint,Сначала нижняя ступенька,Lower step first
+level.pz-06.name,Наверху,Up Top
+level.pz-06.hint,Наверху тоже нужен груз,Up top a weight is needed too

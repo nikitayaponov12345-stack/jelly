@@ -17,8 +17,8 @@ const P = physicsFrom(DATA);
 const strictOpt = solverOptions(P);
 const opt = robustOptions(P, DATA.num('par_window_s'), DATA.num('par_tap_s'));
 const levels = allLevels(DATA);
-/** Наборы, где решение короче 15 с — норма: прототип и учебный мир 1 (GDD «Уровни и миры», «Как строим уровни»). */
-const SHORT_OK = new Set(['proto', 'w1']);
+/** Наборы, где решение короче 15 с — норма: прототип, учебный мир 1 и проба головоломок (GDD «Уровни и миры», «Как строим уровни»). */
+const SHORT_OK = new Set(['proto', 'w1', 'pz']);
 
 console.log(
   `solve: уровней ${levels.length}; бот с запасом — нажатие раз в ${opt.pressEvery} шагов, окно от ${opt.window} шагов, ` +

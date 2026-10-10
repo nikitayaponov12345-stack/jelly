@@ -26,11 +26,18 @@ describe('разбор уровней', () => {
     const levels = allLevels(DATA).filter((l) => l.file === 'w1');
     expect(levels.map((l) => l.id)).toEqual(Array.from({ length: 15 }, (_, i) => `w1-${String(i + 1).padStart(2, '0')}`));
     expect(levels.map((l) => l.par)).toEqual([0, 0, 1, 1, 1, 2, 0, 1, 1, 1, 2, 2, 1, 3, 3]);
-    expect(DATA.worlds.map((w) => w.id)).toEqual(['proto', 'w1']);
+    expect(DATA.worlds.map((w) => w.id)).toEqual(['proto', 'w1', 'pz']);
     for (const l of levels) {
       expect(l.limit).toBeNull();
       expect(DATA.text(`level.${l.id}.name`, 'ru')).not.toBe('');
     }
+  });
+
+  it('проба головоломок — шесть уровней, пар 1–2', () => {
+    const levels = allLevels(DATA).filter((l) => l.file === 'pz');
+    expect(levels.map((l) => l.id)).toEqual(['pz-01', 'pz-02', 'pz-03', 'pz-04', 'pz-05', 'pz-06']);
+    expect(levels.map((l) => l.par)).toEqual([1, 1, 1, 1, 2, 2]);
+    expect(DATA.text('level.pz-03.hint', 'ru')).toBe('Задрожала — прыгай: застынет выше');
   });
 
   it('ошибки называют файл и причину', () => {

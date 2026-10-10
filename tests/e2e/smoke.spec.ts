@@ -30,7 +30,7 @@ test('игра запускается и рисует сцену', async ({ page
   // Сборка `npm run check` идёт без метки публикации.
   expect(await page.evaluate(() => window.__game!.build)).toBe('dev');
   // Язык страницы берётся из браузера: ru — «Желейный легион», иначе «Jelly Legion».
-  await expect(page.getByTestId('debug-line')).toContainText(/(Желейный легион|Jelly Legion) 0\.0\.8/);
+  await expect(page.getByTestId('debug-line')).toContainText(/(Желейный легион|Jelly Legion) 0\.0\.9/);
 
   // По умолчанию — мир 1: 15 уровней, первый — «Прыжок».
   expect(await page.evaluate(() => window.__game!.levels().length)).toBe(15);
