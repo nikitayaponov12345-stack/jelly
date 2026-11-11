@@ -15,7 +15,8 @@
     "e2e": "playwright test",
     "check": "npm run data && npm run test && npm run build && npm run e2e",
     "publish": "node tools/publish.mjs",
-    "solve": "vite build --config tools/solve.config.ts && node build/solve/solve.mjs"
+    "solve": "vite build --config tools/solve.config.ts && node build/solve/solve.mjs",
+    "analyze": "vite build --config tools/analyze.config.ts && node build/analyze/analyze.mjs"
   },
   "dependencies": {
     "pixi.js": "8.21.0"
