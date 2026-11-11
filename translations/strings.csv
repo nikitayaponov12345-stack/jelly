@@ -75,3 +75,16 @@ level.pz-05.name,Две пилы,Two Saws
 level.pz-05.hint,Сначала нижняя ступенька,Lower step first
 level.pz-06.name,Наверху,Up Top
 level.pz-06.hint,Наверху тоже нужен груз,Up top a weight is needed too
+world.pz2.name,Головоломки — проба 2,Puzzles — Trial 2
+level.pz2-01.name,Мост из двери,Door Bridge
+level.pz2-01.hint,Плита и мост — одного цвета,The plate and the bridge share a color
+level.pz2-02.name,Тесный коридор,Tight Corridor
+level.pz2-02.hint,"Подумай, кто побежит следом",Think about who runs next
+level.pz2-03.name,Опора,Foothold
+level.pz2-03.hint,Не всякую дверь надо открывать,Not every door should be opened
+level.pz2-04.name,Остановка,Full Stop
+level.pz2-04.hint,Как остановиться на плите?,How do you stop on the plate?
+level.pz2-05.name,Полка,Shelf
+level.pz2-05.hint,"Плита — наверху, путь — внизу","Plate up top, path below"
+level.pz2-06.name,Три шага,Three Steps
+level.pz2-06.hint,"Синюю — открыть, оранжевую — не трогать","Open the blue, leave the orange alone"
